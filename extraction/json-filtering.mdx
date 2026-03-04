@@ -1,0 +1,642 @@
+---
+title: JSON Filtering
+description: Extract and monitor specific data from JSON APIs using JSONPath and jq
+---
+
+JSON filtering allows you to extract specific values from JSON responses, whether from APIs or JSON embedded in HTML pages. changedetection.io supports both JSONPath and jq for flexible JSON querying.
+
+## How JSON Filtering Works
+
+When you apply a JSON filter, changedetection.io:
+
+1. Fetches the content from the URL
+2. Parses the JSON (either pure JSON or extracts it from HTML)
+3. Applies your filter to extract specific values
+4. Formats the output for monitoring
+5. Detects changes in the extracted data
+
+**Key Benefits:**
+- Monitor API responses for changes
+- Extract nested data structures
+- Filter and transform JSON data
+- Parse JSON embedded in HTML (like LD+JSON)
+- Use logical operations to filter results
+
+## Filtering Methods
+
+changedetection.io supports three JSON filtering syntaxes:
+
+<Tabs>
+  <Tab title="JSONPath">
+    **Prefix:** `json:`
+    
+    **Library:** jsonpath-ng
+    
+    **Best for:** Simple to moderate JSON queries
+    
+    **Example:**
+    ```jsonpath
+    json:$.products[*].price
+    json:$..author
+    json:$.store.book[0].title
+    ```
+  </Tab>
+  
+  <Tab title="jq">
+    **Prefix:** `jq:`
+    
+    **Library:** jq (full implementation)
+    
+    **Best for:** Complex transformations and logic
+    
+    **Example:**
+    ```jq
+    jq:.products[] | select(.price < 100) | .name
+    jq:.items | map(.title)
+    jq:.data.users[].email
+    ```
+    
+    <Note>
+    jq is not available on all platforms (requires compilation on Windows). Use JSONPath as a cross-platform alternative.
+    </Note>
+  </Tab>
+  
+  <Tab title="jq (Raw Output)">
+    **Prefix:** `jqraw:`
+    
+    **Difference:** Returns raw values without JSON formatting
+    
+    **Example:**
+    ```jq
+    jqraw:.price
+    ```
+    
+    Returns: `29.99` instead of `"29.99"`
+  </Tab>
+</Tabs>
+
+## JSONPath Syntax
+
+### Basic Selection
+
+```jsonpath
+json:$.store.book[0].title
+```
+Access nested properties with dot notation.
+
+```jsonpath
+json:$.products[*].name
+```
+Select all names from products array.
+
+```jsonpath
+json:$..price
+```
+Recursive descent - finds all `price` fields at any level.
+
+### Array Access
+
+```jsonpath
+json:$.items[0]
+```
+First item in array.
+
+```jsonpath
+json:$.items[-1]
+```
+Last item in array.
+
+```jsonpath
+json:$.items[0:3]
+```
+Slice - first three items.
+
+### Filtering
+
+```jsonpath
+json:$.products[?(@.price < 100)]
+```
+Filter products where price is less than 100.
+
+```jsonpath
+json:$.books[?(@.author == 'Tolkien')]
+```
+Filter books by author.
+
+## jq Syntax
+
+### Basic Selection
+
+```jq
+jq:.store.book[0].title
+```
+Access nested properties.
+
+```jq
+jq:.products[].price
+```
+Extract all prices from products array.
+
+### Filtering with select()
+
+```jq
+jq:.products[] | select(.price < 100)
+```
+Filter products under $100.
+
+```jq
+jq:.items[] | select(.stock > 0) | .name
+```
+Get names of items in stock.
+
+### Transformations
+
+```jq
+jq:.products | map(.price)
+```
+Extract array of all prices.
+
+```jq
+jq:.users | map({name, email})
+```
+Create new objects with selected fields.
+
+```jq
+jq:.prices | add
+```
+Sum all prices.
+
+## Practical Examples
+
+### Monitor API Price
+
+<CodeGroup>
+```json JSON Response
+{
+  "product": {
+    "id": 12345,
+    "name": "Gaming Laptop",
+    "price": 1299.99,
+    "currency": "USD",
+    "stock": 5
+  }
+}
+```
+
+```jsonpath JSONPath Filter
+json:$.product.price
+```
+
+```jq jq Filter
+jq:.product.price
+```
+
+```text Output
+1299.99
+```
+</CodeGroup>
+
+### Extract Multiple Fields
+
+<Tabs>
+  <Tab title="JSONPath">
+    ```jsonpath
+    json:$.product.name
+    json:$.product.price
+    json:$.product.stock
+    ```
+    
+    Each filter on a new line extracts different fields.
+  </Tab>
+  
+  <Tab title="jq">
+    ```jq
+    jq:.product | "\(.name): $\(.price) (Stock: \(.stock))"
+    ```
+    
+    Formats output as: `Gaming Laptop: $1299.99 (Stock: 5)`
+  </Tab>
+</Tabs>
+
+### Monitor Array of Items
+
+<CodeGroup>
+```json JSON Response
+{
+  "products": [
+    {"name": "Laptop", "price": 999},
+    {"name": "Mouse", "price": 29},
+    {"name": "Keyboard", "price": 79}
+  ]
+}
+```
+
+```jsonpath All Products
+json:$.products[*].name
+```
+
+```jsonpath Specific Product
+json:$.products[0].price
+```
+
+```jq Products Under $100
+jq:.products[] | select(.price < 100) | .name
+```
+</CodeGroup>
+
+## Embedded JSON in HTML
+
+changedetection.io can automatically extract and parse JSON embedded in HTML pages, particularly useful for:
+
+- **LD+JSON** (Linked Data JSON) - Structured data for SEO
+- **Application State** - JavaScript state stored in script tags
+- **API Data** - JSON embedded for client-side rendering
+
+### LD+JSON Product Data
+
+<CodeGroup>
+```html HTML Source
+<html>
+<head>
+  <script type="application/ld+json">
+  {
+    "@context": "http://schema.org",
+    "@type": "Product",
+    "name": "Gaming Laptop",
+    "offers": {
+      "@type": "Offer",
+      "price": "1299.99",
+      "priceCurrency": "USD",
+      "availability": "http://schema.org/InStock"
+    }
+  }
+  </script>
+</head>
+<body>...</body>
+</html>
+```
+
+```jsonpath Extract Price
+json:$.offers.price
+```
+
+```jsonpath Extract Currency
+json:$.offers.priceCurrency
+```
+
+```text Output
+"1299.99"
+"USD"
+```
+</CodeGroup>
+
+<Note>
+changedetection.io automatically detects and parses `<script type="application/ld+json">` tags. Just use your JSON filter as if you were querying the JSON directly.
+</Note>
+
+### Multiple JSON Blocks
+
+If the HTML contains multiple JSON blocks:
+
+```html
+<script type="application/ld+json">{...}</script>
+<script type="application/ld+json">{...}</script>
+```
+
+changedetection.io will search through all blocks and return the first matching result.
+
+## Advanced Filtering
+
+<Accordion title="Filter by Multiple Conditions (jq)">
+```jq
+jq:.products[] | select(.price < 100 and .stock > 0) | .name
+```
+Finds products under $100 that are in stock.
+
+```jq
+jq:.items[] | select(.category == "electronics" or .category == "computers")
+```
+Filters items by multiple categories.
+</Accordion>
+
+<Accordion title="Nested Data Extraction">
+```jsonpath
+json:$.store.books[*].author.name
+```
+Navigates through nested objects.
+
+```jq
+jq:.data.users[].profile.email
+```
+Accesses deeply nested fields.
+</Accordion>
+
+<Accordion title="Array Transformations (jq)">
+```jq
+jq:.products | map(.price) | add / length
+```
+Calculates average price.
+
+```jq
+jq:.items | sort_by(.price) | .[0]
+```
+Finds cheapest item.
+
+```jq
+jq:.products | group_by(.category) | map({category: .[0].category, count: length})
+```
+Groups and counts by category.
+</Accordion>
+
+<Accordion title="Conditional Output (jq)">
+```jq
+jq:if .stock > 0 then "In Stock" else "Out of Stock" end
+```
+Returns different values based on conditions.
+
+```jq
+jq:.products[] | if .price < 50 then .name else empty end
+```
+Only outputs names of products under $50.
+</Accordion>
+
+## Output Formatting
+
+### Single Value
+
+When your filter returns a single value:
+
+```jsonpath
+json:$.price
+```
+Output: `29.99` (unquoted number)
+
+### Multiple Values
+
+When your filter returns multiple values:
+
+```jsonpath
+json:$.products[*].price
+```
+Output:
+```json
+[
+    99.99,
+    29.99,
+    149.99
+]
+```
+
+### String Values
+
+```jsonpath
+json:$.product.name
+```
+Output: `"Gaming Laptop"` (includes quotes)
+
+Use `jqraw:` prefix to get unquoted strings:
+```jq
+jqraw:.product.name
+```
+Output: `Gaming Laptop`
+
+## Testing JSON Filters
+
+### Using Online Tools
+
+**JSONPath:**
+- [JSONPath Online Evaluator](https://jsonpath.com/)
+- Paste your JSON and test expressions
+
+**jq:**
+- [jq play](https://jqplay.org/)
+- Interactive jq playground
+
+### Using Browser Console
+
+1. Open DevTools Console (F12)
+2. Fetch and test your JSON:
+   ```javascript
+   fetch('https://api.example.com/data')
+     .then(r => r.json())
+     .then(data => console.log(data))
+   ```
+3. Examine structure and test paths
+
+## Common Patterns
+
+### Pattern: Extract Nested Price
+```jsonpath
+json:$.offers.price
+json:$..price
+```
+*Use case:* Product pricing from structured data.
+
+### Pattern: Monitor Stock Status
+```jsonpath
+json:$.availability
+```
+*Use case:* Track product availability.
+
+### Pattern: Track Multiple Products
+```jsonpath
+json:$.products[*].name
+json:$.products[*].price
+```
+*Use case:* Monitor product catalog.
+
+### Pattern: Filter Price Range (jq)
+```jq
+jq:.products[] | select(.price > 50 and .price < 200)
+```
+*Use case:* Find mid-range products.
+
+### Pattern: Count Items (jq)
+```jq
+jq:.items | length
+```
+*Use case:* Track number of available items.
+
+## Common Pitfalls
+
+<Warning>
+**Pitfall #1: Forgetting the Prefix**
+
+```text
+$.products[*].price  # Wrong - will be treated as CSS selector
+```
+
+**Correct:**
+```jsonpath
+json:$.products[*].price
+```
+</Warning>
+
+<Warning>
+**Pitfall #2: Path Not Found**
+
+If your filter returns nothing:
+
+1. Verify JSON structure (use browser DevTools)
+2. Check for typos in property names
+3. Ensure arrays use correct syntax: `[*]` or `[]`
+4. Try recursive descent: `$..property_name`
+</Warning>
+
+<Warning>
+**Pitfall #3: Wrong Filter Type**
+
+```jsonpath
+json:$.products[]  # JSONPath doesn't use [] for iteration
+```
+
+**Use jq instead:**
+```jq
+jq:.products[]
+```
+
+Or JSONPath:
+```jsonpath
+json:$.products[*]
+```
+</Warning>
+
+<Warning>
+**Pitfall #4: jq Not Available**
+
+jq requires compilation and may not be available on Windows.
+
+**Fallback:** Use JSONPath for cross-platform compatibility:
+```jsonpath
+json:$.products[?(@.price < 100)].name
+```
+</Warning>
+
+## When to Use JSON Filtering
+
+<Check>**Good for:**</Check>
+- Monitoring REST APIs
+- Tracking prices from JSON endpoints
+- Extracting structured data from HTML (LD+JSON)
+- Processing JSON with logical filtering
+- Monitoring nested data structures
+
+<Check>**Not ideal for:**</Check>
+- HTML content (use [CSS selectors](/extraction/css-selectors) or [XPath](/extraction/xpath))
+- XML/RSS feeds (use [XPath](/extraction/xpath))
+- Plain text content
+
+## JSONPath vs jq
+
+| Feature | JSONPath | jq |
+|---------|----------|----|
+| Syntax complexity | Simpler | More powerful |
+| Platform support | ✅ All platforms | ❌ May not work on Windows |
+| Filtering | Basic `[?(@.x)]` | Advanced `select()` |
+| Transformations | Limited | Extensive (map, group, etc.) |
+| Learning curve | Easier | Steeper |
+| Output formatting | Automatic | Full control |
+| Math operations | ❌ No | ✅ Yes (add, multiply, etc.) |
+
+## Real-World Examples
+
+<Accordion title="Example: Monitor GitHub API">
+```jq
+jq:.stargazers_count
+```
+Track repository stars from GitHub API.
+
+```jq
+jq:.open_issues_count
+```
+Monitor open issues count.
+</Accordion>
+
+<Accordion title="Example: Track Cryptocurrency Price">
+```jsonpath
+json:$.bitcoin.usd
+```
+Extract Bitcoin price in USD from crypto API.
+
+```jq
+jq:.data.quotes.USD.price
+```
+Alternative structure from different API.
+</Accordion>
+
+<Accordion title="Example: Monitor E-commerce Inventory">
+```jq
+jq:.products[] | select(.stock < 10) | "\(.name): \(.stock) left"
+```
+Alerts when stock is low (under 10 units).
+</Accordion>
+
+<Accordion title="Example: Track Weather Data">
+```jsonpath
+json:$.current.temp_c
+json:$.current.condition.text
+```
+Extract temperature and conditions from weather API.
+</Accordion>
+
+<Accordion title="Example: Monitor Job Postings API">
+```jq
+jq:.jobs[] | select(.location == "Remote") | .title
+```
+Filter remote job titles from job board API.
+</Accordion>
+
+## Combining with Other Filters
+
+You can combine JSON filtering with other features:
+
+### Ignore Text
+After extracting JSON data, filter out unwanted values:
+
+**Filter:** `json:$.products[*].name`
+
+**Ignore text:** `Discontinued`
+
+### Trigger Keywords
+Trigger only when specific values appear:
+
+**Filter:** `json:$.status`
+
+**Trigger text:** `Available`, `In Stock`
+
+### Extract Text (Regex)
+Further process extracted JSON values:
+
+**Filter:** `json:$.price`
+
+**Extract text:** `/\d+\.\d{2}/` (extract just the number)
+
+## Debugging Tips
+
+### No Output
+
+1. Verify URL returns valid JSON (check in browser)
+2. Test filter in online JSONPath/jq playground
+3. Check for typos in property names
+4. Try recursive descent: `$..property`
+5. Enable browser-based fetching if JSON is loaded dynamically
+
+### Unexpected Output Format
+
+1. Single value returns without array brackets
+2. Multiple values return as JSON array
+3. Use `jqraw:` for unquoted string output
+4. Check if your path is too broad (`$..price` finds ALL prices)
+
+### Parsing Errors
+
+1. Ensure content-type is JSON or contains valid JSON
+2. Check for BOM (Byte Order Mark) issues
+3. Verify JSON is not wrapped in extra markup
+4. For HTML-embedded JSON, ensure `<script type="application/ld+json">` is correct
+
+## Related Topics
+
+- [CSS Selectors](/extraction/css-selectors) - Extract HTML content
+- [XPath](/extraction/xpath) - Query XML and RSS feeds
+- [API Monitoring](/extraction/json-filtering) - Best practices for monitoring APIs

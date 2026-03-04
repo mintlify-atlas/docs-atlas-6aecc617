@@ -1,0 +1,614 @@
+---
+title: Notifications Setup
+description: Configure Discord, Slack, Email, Teams, and 100+ notification services with Jinja2 templating
+---
+
+Changedetection.io supports over 100 notification services through the powerful [Apprise](https://github.com/caronc/apprise) library. Configure notifications globally or per-watch with custom templates using Jinja2.
+
+## Supported Services
+
+Changedetection.io supports:
+
+- **Chat:** Discord, Slack, Mattermost, Rocket.Chat, Telegram, Matrix
+- **Email:** SMTP, Gmail, Office365, Mailgun, SendGrid
+- **Collaboration:** Microsoft Teams, Google Chat, Flock, Gitter
+- **Incident Management:** PagerDuty, Opsgenie, VictorOps
+- **Custom:** Webhooks (JSON/XML), Syslog, MQTT
+- **[And 100+ more services](https://github.com/caronc/apprise#popular-notification-services)**
+
+## Apprise URL Syntax
+
+Apprise uses URL-based configuration. Each service has a specific URL format.
+
+### Discord
+
+<ParamField path="discord://webhook_id/webhook_token" type="string">
+  Discord webhook notification
+  
+  **Steps to get webhook URL:**
+  1. In Discord, go to Server Settings → Integrations → Webhooks
+  2. Click "New Webhook" or edit existing
+  3. Copy the webhook URL: `https://discord.com/api/webhooks/{id}/{token}`
+  4. Extract the ID and token, format as: `discord://{id}/{token}`
+  
+  **Example:**
+  ```
+  discord://1234567890/AbCdEfGhIjKlMnOpQrStUvWxYz
+  ```
+</ParamField>
+
+### Slack
+
+<ParamField path="slack://tokenA/tokenB/tokenC/" type="string">
+  Slack webhook notification
+  
+  **Steps to get webhook URL:**
+  1. Go to https://api.slack.com/apps
+  2. Create a new app or select existing
+  3. Enable "Incoming Webhooks"
+  4. Add webhook to workspace
+  5. Copy webhook URL: `https://hooks.slack.com/services/T.../B.../X...`
+  6. Extract tokens after `/services/`: `slack://T.../B.../X...`
+  
+  **Example:**
+  ```
+  slack://T1234567/B1234567/XXXXXXXXXXXX
+  ```
+</ParamField>
+
+### Email (SMTP)
+
+<ParamField path="mailto://user:pass@example.com?to=recipient@example.com" type="string">
+  Email notification via SMTP
+  
+  **Format:**
+  ```
+  mailto://[user]:[password]@[hostname]:[port]?to=[recipient]
+  ```
+  
+  **Example with Gmail:**
+  ```
+  mailto://myuser:mypassword@smtp.gmail.com:587?to=alerts@example.com
+  ```
+  
+  **Example with Office365:**
+  ```
+  mailto://user:pass@smtp.office365.com:587?to=recipient@example.com
+  ```
+</ParamField>
+
+### Office365
+
+<ParamField path="o365://TenantID:AccountEmail/ClientID/ClientSecret/TargetEmail" type="string">
+  Office365 email using Microsoft Graph API
+  
+  **Format:**
+  ```
+  o365://[TenantID]:[AccountEmail]/[ClientID]/[ClientSecret]/[TargetEmail]
+  ```
+  
+  **Example:**
+  ```
+  o365://abc123:sender@company.com/client-id-here/secret-here/recipient@company.com
+  ```
+</ParamField>
+
+### Microsoft Teams
+
+<ParamField path="msteams://TokenA/TokenB/TokenC/" type="string">
+  Microsoft Teams webhook notification
+  
+  **Steps to get webhook URL:**
+  1. In Teams, go to the channel where you want notifications
+  2. Click "⋯" → "Connectors" → "Incoming Webhook"
+  3. Configure webhook and copy URL
+  4. Extract tokens from URL
+  
+  **Example:**
+  ```
+  msteams://TokenA/TokenB/TokenC/
+  ```
+</ParamField>
+
+### Google Chat
+
+<ParamField path="gchat://workspace/key/token" type="string">
+  Google Chat webhook notification
+  
+  **Example:**
+  ```
+  gchat://myworkspace/AIza...../token-here
+  ```
+</ParamField>
+
+### Telegram
+
+<ParamField path="tgram://bottoken/ChatID" type="string">
+  Telegram bot notification
+  
+  **Example:**
+  ```
+  tgram://123456789:ABCdefGHIjklMNOpqrsTUVwxyz/-123456789
+  ```
+</ParamField>
+
+### Rocket.Chat
+
+<ParamField path="rocket://user:password@hostname/#Channel" type="string">
+  Rocket.Chat webhook notification
+  
+  **Example:**
+  ```
+  rocket://myuser:mypass@chat.example.com/#alerts
+  ```
+</ParamField>
+
+### Custom JSON Webhook
+
+<ParamField path="json://someserver.com/custom-api" type="string">
+  Custom JSON POST webhook
+  
+  **Example:**
+  ```
+  json://api.example.com/webhook
+  jsons://api.example.com/secure-webhook
+  ```
+  
+  The notification data will be POSTed as JSON to your endpoint.
+</ParamField>
+
+### Syslog
+
+<ParamField path="syslog://" type="string">
+  Send notifications to local syslog
+  
+  **Example:**
+  ```
+  syslog://
+  syslog://remote-server:514
+  ```
+</ParamField>
+
+## Global vs Per-Watch Notifications
+
+### Global Notifications
+
+Set default notification URLs that apply to all watches:
+
+1. Go to **Settings** (gear icon)
+2. Navigate to **Notifications** tab
+3. Enter notification URLs (one per line)
+4. Save settings
+
+**Example global configuration:**
+```
+discord://1234567890/AbCdEfGhIjKlMnOpQrStUvWxYz
+slack://T1234567/B1234567/XXXXXXXXXXXX
+mailto://alerts:pass@smtp.gmail.com?to=team@example.com
+```
+
+### Per-Watch Notifications
+
+Override global settings for specific watches:
+
+1. Edit a watch
+2. Go to **Notifications** tab
+3. Enter notification URLs (one per line)
+4. Enable/disable specific notifications
+5. Save watch
+
+<Note>
+  Per-watch notifications **override** global notifications. If a watch has notification URLs configured, global notifications will not be sent.
+</Note>
+
+### Tag-Based Notifications
+
+Configure notifications at the tag level:
+
+1. Go to **Tags** page
+2. Edit a tag
+3. Configure notification URLs
+4. All watches with this tag inherit these notifications
+
+**Priority order:**
+```
+Individual Watch Settings > Tag Settings > Global Settings
+```
+
+## Notification Templates (Jinja2)
+
+Customize notification content using Jinja2 templates with access to watch data, diffs, and timestamps.
+
+### Available Template Variables
+
+<ParamField path="watch_url" type="string">
+  The URL being monitored
+  
+  **Example:**
+  ```jinja2
+  {{ watch_url }}
+  ```
+</ParamField>
+
+<ParamField path="watch_title" type="string">
+  The title/name of the watch
+  
+  **Example:**
+  ```jinja2
+  {{ watch_title }}
+  ```
+</ParamField>
+
+<ParamField path="watch_uuid" type="string">
+  Unique identifier for the watch
+  
+  **Example:**
+  ```jinja2
+  {{ watch_uuid }}
+  ```
+</ParamField>
+
+<ParamField path="watch_tag" type="string">
+  Tags assigned to the watch
+</ParamField>
+
+<ParamField path="base_url" type="string">
+  Your changedetection.io instance URL (set via BASE_URL env variable)
+  
+  **Example:**
+  ```jinja2
+  Edit: {{ base_url }}/edit/{{ watch_uuid }}
+  ```
+</ParamField>
+
+<ParamField path="diff" type="string">
+  Diff showing changes (with +/- prefixes)
+  
+  **Example:**
+  ```jinja2
+  {{ diff }}
+  ```
+  
+  **With parameters:**
+  ```jinja2
+  {{ diff(lines=5) }}
+  {{ diff(added_only=true) }}
+  {{ diff(removed_only=true) }}
+  {{ diff(context=3) }}
+  ```
+</ParamField>
+
+<ParamField path="diff_clean" type="string">
+  Diff without +/- prefixes
+</ParamField>
+
+<ParamField path="diff_added" type="string">
+  Only added lines
+  
+  **Example:**
+  ```jinja2
+  {{ diff_added(lines=10) }}
+  ```
+</ParamField>
+
+<ParamField path="diff_removed" type="string">
+  Only removed lines
+</ParamField>
+
+<ParamField path="diff_full" type="string">
+  Full diff including unchanged lines
+</ParamField>
+
+<ParamField path="diff_patch" type="string">
+  Diff in unified patch format
+</ParamField>
+
+<ParamField path="current_snapshot" type="string">
+  Current version of the content
+</ParamField>
+
+<ParamField path="prev_snapshot" type="string">
+  Previous version of the content
+</ParamField>
+
+<ParamField path="change_datetime" type="string">
+  Timestamp when change was detected
+  
+  **Example:**
+  ```jinja2
+  {{ change_datetime }}
+  {{ change_datetime(format='%Y-%m-%d') }}
+  {{ change_datetime(format='%A') }}
+  ```
+</ParamField>
+
+<ParamField path="triggered_text" type="string">
+  Text that matched trigger filters
+</ParamField>
+
+<ParamField path="preview_url" type="string">
+  URL to preview the changes in changedetection.io
+</ParamField>
+
+<ParamField path="diff_url" type="string">
+  Direct URL to the diff view
+</ParamField>
+
+<ParamField path="screenshot" type="string">
+  Base64-encoded screenshot (if enabled)
+</ParamField>
+
+### Custom Notification Title
+
+Edit the notification title in Settings → Notifications:
+
+**Default title:**
+```jinja2
+ChangeDetection.io Notification - {{ watch_url }}
+```
+
+**Custom title examples:**
+```jinja2
+🔔 {{ watch_title }} has changed!
+
+Price Alert: {{ watch_title }}
+
+{{ watch_tag }}: Change detected on {{ watch_url }}
+```
+
+### Custom Notification Body
+
+Edit the notification body in Settings → Notifications:
+
+**Default body:**
+```jinja2
+Changed: {{ watch_url }}
+
+{{ diff }}
+```
+
+**Custom body examples:**
+
+**Example 1: Compact format**
+```jinja2
+URL: {{ watch_url }}
+Changed: {{ change_datetime(format='%Y-%m-%d %H:%M:%S') }}
+
+Changes:
+{{ diff(lines=10) }}
+
+View: {{ preview_url }}
+```
+
+**Example 2: Added lines only**
+```jinja2
+🆕 New content detected on {{ watch_title }}
+
+{{ diff_added_clean(lines=15) }}
+
+Full details: {{ base_url }}/preview/{{ watch_uuid }}
+```
+
+**Example 3: Rich formatting**
+```jinja2
+**Website:** {{ watch_url }}
+**Title:** {{ watch_title }}
+**When:** {{ change_datetime }}
+**Tags:** {{ watch_tag }}
+
+## What changed:
+{{ diff(lines=20, context=2) }}
+
+[View full changes]({{ diff_url }})
+[Edit watch]({{ base_url }}/edit/{{ watch_uuid }})
+```
+
+**Example 4: Price monitoring**
+```jinja2
+💰 Price update for {{ watch_title }}
+
+Previous price: {{ prev_snapshot }}
+Current price: {{ current_snapshot }}
+
+{{ diff_clean }}
+
+Check now: {{ watch_url }}
+```
+
+### Conditional Notifications
+
+Use Jinja2 conditionals for advanced logic:
+
+```jinja2
+{% if diff_added %}
+🆕 New content added:
+{{ diff_added(lines=5) }}
+{% endif %}
+
+{% if diff_removed %}
+❌ Content removed:
+{{ diff_removed(lines=5) }}
+{% endif %}
+
+{% if watch_tag == 'urgent' %}
+🚨 URGENT: Immediate attention required
+{% endif %}
+```
+
+## Notification Formats
+
+Changedetection.io supports multiple notification formats:
+
+<ParamField path="notification_format" type="string">
+  Format for notification content
+  
+  **Values:**
+  - `text` - Plain text (default)
+  - `markdown` - Markdown formatting
+  - `html` - HTML formatting
+  
+  Set in Settings → Notifications → Format dropdown
+</ParamField>
+
+### Markdown Format
+
+Use markdown for rich formatting:
+
+```markdown
+## Change Detected: {{ watch_title }}
+
+**URL:** {{ watch_url }}
+**Time:** {{ change_datetime }}
+
+### Changes:
+{{ diff(lines=10) }}
+
+[View Details]({{ preview_url }})
+```
+
+### HTML Format
+
+Use HTML for email notifications:
+
+```html
+<h2>Change Detected</h2>
+<p><strong>URL:</strong> <a href="{{ watch_url }}">{{ watch_title }}</a></p>
+<p><strong>When:</strong> {{ change_datetime }}</p>
+<h3>Changes:</h3>
+<pre>{{ diff(lines=10) }}</pre>
+<p><a href="{{ preview_url }}">View Full Details</a></p>
+```
+
+## Muting Notifications
+
+### Mute Individual Watch
+
+1. Edit watch
+2. Go to **Notifications** tab
+3. Check **Mute notifications for this watch**
+4. Save
+
+### Mute All Notifications
+
+1. Go to **Settings**
+2. Enable **Mute all notifications** toggle
+3. Save
+
+<Note>
+  The `all_muted` setting overrides all watch-level and tag-level notification settings.
+</Note>
+
+### Mute by Tag
+
+1. Edit tag
+2. Enable **Mute notifications** for tag
+3. All watches with this tag will have notifications muted
+
+## Notification Screenshots
+
+Include screenshots in notifications:
+
+1. Edit watch
+2. Go to **Notifications** tab
+3. Enable **Include screenshot in notification**
+4. Save
+
+<Note>
+  Screenshots require a browser-based fetcher (Playwright/Puppeteer) and increase notification size.
+</Note>
+
+## Testing Notifications
+
+### Test Global Notifications
+
+1. Go to **Settings** → **Notifications**
+2. Click **Send test notification**
+3. Check your notification service for the test message
+
+### Test Watch Notifications
+
+1. Edit watch
+2. Go to **Notifications** tab
+3. Click **Send test notification**
+4. Verify notification received
+
+## Troubleshooting
+
+### Notifications Not Sending
+
+1. **Check notification URLs**: Verify the Apprise URL format is correct
+2. **Test connectivity**: Ensure changedetection.io can reach the notification service
+3. **Check logs**: Look for errors in Docker logs: `docker logs changedetection`
+4. **Verify watch isn't muted**: Check watch and global mute settings
+
+### Template Errors
+
+If Jinja2 templates fail:
+
+1. **Syntax errors**: Check for missing `}}`, `%}`, or quotes
+2. **Undefined variables**: Ensure template variables exist (e.g., `watch_title` may be empty)
+3. **Test with simple template**: Start with `{{ watch_url }}` and add complexity
+
+### Discord/Slack Not Receiving
+
+1. **Webhook permissions**: Verify webhook has permission to post
+2. **Rate limits**: Check if you're hitting API rate limits
+3. **URL format**: Double-check Discord/Slack webhook URL format
+
+### Email Notifications Failing
+
+1. **SMTP settings**: Verify hostname, port, username, password
+2. **Authentication**: Use app-specific passwords for Gmail
+3. **TLS/SSL**: Try different ports (587 for STARTTLS, 465 for SSL)
+4. **NO_PROXY**: Add email server to NO_PROXY environment variable
+
+## Best Practices
+
+1. **Test notifications** before deploying watches
+2. **Use templates** to reduce notification fatigue
+3. **Set NO_PROXY** to exclude notification services from proxy routing
+4. **Use per-watch notifications** for critical watches
+5. **Limit diff size** in templates with `diff(lines=10)`
+6. **Monitor notification count** to avoid overwhelming channels
+7. **Use tags** to organize notification routing
+
+## Example Configurations
+
+### Multi-Channel Setup
+
+```
+# Critical alerts to PagerDuty and Teams
+pagerduty://integration-key-here
+msteams://TokenA/TokenB/TokenC/
+
+# All changes to Discord
+discord://1234567890/AbCdEfGhIjKlMnOpQrStUvWxYz
+
+# Daily digest via email
+mailto://alerts:pass@smtp.gmail.com?to=team@example.com
+```
+
+### Custom Webhook with Template
+
+**Notification URL:**
+```
+json://api.example.com/changedetection-webhook
+```
+
+**Notification Body:**
+```json
+{
+  "event": "page_changed",
+  "url": "{{ watch_url }}",
+  "title": "{{ watch_title }}",
+  "timestamp": "{{ change_datetime(format='%Y-%m-%dT%H:%M:%SZ') }}",
+  "diff_summary": "{{ diff(lines=3) }}",
+  "view_url": "{{ preview_url }}"
+}
+```
+
+## Related Documentation
+
+- [Environment Variables](/configuration/environment-variables) - Configure BASE_URL for notification links
+- [Proxy Setup](/configuration/proxy-setup) - Set NO_PROXY for notification services
+- [Apprise Documentation](https://github.com/caronc/apprise) - Full list of supported services

@@ -1,0 +1,484 @@
+---
+title: PDF Monitoring
+description: Monitor changes in PDF files including text content and metadata
+---
+
+changedetection.io can monitor PDF files for text content changes, allowing you to track updates to documents, reports, legal files, and more.
+
+## How PDF Monitoring Works
+
+When monitoring a PDF file, changedetection.io:
+
+1. Downloads the PDF file from the URL
+2. Extracts the text content from all pages
+3. Applies any filters you've configured
+4. Compares with previous versions to detect changes
+5. Sends notifications when changes are detected
+
+**Key Capabilities:**
+- Extract and monitor text from PDF pages
+- Track changes in specific sections using filters
+- Monitor PDF metadata changes
+- Detect when a PDF is updated or replaced
+- Track PDF file size changes
+
+<Note>
+PDF monitoring extracts text content. Images, charts, and complex layouts in PDFs are not directly monitored, though text within them may be extracted if embedded.
+</Note>
+
+## Setting Up PDF Monitoring
+
+### Basic Configuration
+
+1. Add the PDF URL to changedetection.io:
+   ```
+   https://example.com/document.pdf
+   ```
+
+2. changedetection.io automatically detects it's a PDF file
+
+3. The text content is extracted and monitored
+
+4. Set your check frequency and notification preferences
+
+### Fetch Method
+
+PDFs are always fetched using the `html_requests` backend (plain HTTP requests), even if you have browser-based fetching configured globally.
+
+<Info>
+This is because browser-based fetchers (Playwright/WebDriver) serve PDFs in embedded viewers rather than downloading the raw file.
+</Info>
+
+## Filtering PDF Content
+
+You can apply filters to monitor specific sections of a PDF:
+
+### Using Text Filters
+
+Extract specific text patterns using regex:
+
+<CodeGroup>
+```regex Extract Version Numbers
+/Version\s+\d+\.\d+/
+```
+
+```regex Extract Dates
+/\d{4}-\d{2}-\d{2}/
+```
+
+```regex Extract Prices
+/\$\d+,?\d*\.\d{2}/
+```
+</CodeGroup>
+
+**In changedetection.io:**
+
+1. Go to your PDF watch settings
+2. Under **Extract text**, add your regex pattern
+3. Only matching text will be monitored
+
+### Ignoring Content
+
+Filter out parts of the PDF you don't want to monitor:
+
+**Ignore lines containing:**
+```text
+Generated on
+Page \d+ of \d+
+Copyright
+```
+
+This removes:
+- Timestamp lines that change on every generation
+- Page numbers
+- Copyright notices
+
+You can also use regex patterns:
+```regex
+/Generated on .*/
+/Last updated: .*/
+```
+
+## Practical Examples
+
+### Monitor Legal Documents
+
+<Accordion title="Example: Track Contract Updates">
+**URL:** `https://example.com/contract-v2.pdf`
+
+**Extract text (regex):**
+```regex
+/Section\s+\d+\.\d+.*/
+```
+
+**Result:** Monitors only section headings for changes.
+</Accordion>
+
+<Accordion title="Example: Monitor Terms of Service">
+**URL:** `https://example.com/terms-of-service.pdf`
+
+**Ignore text:**
+```text
+Last Modified:
+Version:
+```
+
+**Result:** Ignores version metadata, tracks actual content changes.
+</Accordion>
+
+### Monitor Reports and Publications
+
+<Accordion title="Example: Financial Reports">
+**URL:** `https://investor.company.com/q4-report.pdf`
+
+**Extract text:**
+```regex
+/Revenue:.*\$/
+/Net Income:.*\$/
+```
+
+**Result:** Monitors only financial figures.
+</Accordion>
+
+<Accordion title="Example: Research Papers">
+**URL:** `https://university.edu/research/paper-2024.pdf`
+
+**Ignore text:**
+```regex
+/Page \d+ of \d+/
+/Downloaded from.*/
+```
+
+**Result:** Ignores dynamic content, tracks paper content.
+</Accordion>
+
+### Government and Regulatory Documents
+
+<Accordion title="Example: Regulation Updates">
+**URL:** `https://regulator.gov/rules/2024-regulations.pdf`
+
+**Trigger text:**
+```text
+AMENDED
+REVISED
+NEW SECTION
+```
+
+**Result:** Only notifies when specific change keywords appear.
+</Accordion>
+
+## Advanced Monitoring Techniques
+
+### Monitor Multiple PDFs
+
+Track a series of related documents:
+
+```text
+https://example.com/report-jan-2024.pdf
+https://example.com/report-feb-2024.pdf
+https://example.com/report-mar-2024.pdf
+```
+
+Set up separate watches or use tags to group them.
+
+### Trigger-Based Monitoring
+
+Only get notified when specific keywords appear:
+
+**PDF:** Product specification sheet
+
+**Trigger text:**
+```text
+DISCONTINUED
+END OF LIFE
+RECALL
+```
+
+**Result:** Silent monitoring until a critical keyword appears.
+
+### Section-Specific Monitoring
+
+Monitor only specific sections:
+
+**Extract text:**
+```regex
+/Section 5:.*?(?=Section 6:|$)/s
+```
+
+This uses a regex to extract everything in Section 5.
+
+<Warning>
+Complex regex patterns with multiline matching may not work as expected. Test thoroughly and consider simpler patterns.
+</Warning>
+
+## Combining Filters
+
+You can stack multiple filtering techniques:
+
+<CodeGroup>
+```regex Extract Text
+/Price:.*\$/
+/Stock:.*\d+/
+```
+
+```text Ignore Text
+Generated on
+Printed on
+```
+
+```text Trigger Text
+DISCOUNT
+SALE
+```
+</CodeGroup>
+
+**Workflow:**
+1. Extract only price and stock information
+2. Ignore dynamic generation timestamps
+3. Only trigger notification if "DISCOUNT" or "SALE" appears
+
+## What Gets Monitored
+
+### Text Content
+- Body text on all pages
+- Headers and footers
+- Tables (text content)
+- Form field values (if text)
+- Metadata (can be extracted)
+
+### Not Monitored
+- Images and photos
+- Charts and graphs (visual elements)
+- Font formatting (bold, italic, etc.)
+- Page layout changes
+- PDF structure (unless text content changes)
+
+<Note>
+Some PDFs use images for text (scanned documents). These require OCR processing and may not extract properly. Consider using screenshot-based monitoring for scanned PDFs.
+</Note>
+
+## Testing and Debugging
+
+### Verify Text Extraction
+
+1. Set up your PDF watch
+2. Run a manual check
+3. View the **Preview** tab to see extracted text
+4. Verify the content looks correct
+5. Adjust filters if needed
+
+### Common Issues
+
+<Accordion title="No Text Extracted">
+**Problem:** Preview shows empty or minimal content.
+
+**Possible causes:**
+- PDF is scanned images (no embedded text)
+- PDF is password protected
+- PDF uses non-standard encoding
+- URL doesn't serve the PDF correctly
+
+**Solutions:**
+- Use OCR tools to process scanned PDFs first
+- Ensure PDF is publicly accessible
+- Check PDF opens correctly in browser
+- Try downloading PDF manually to verify format
+</Accordion>
+
+<Accordion title="Too Much Content Changes">
+**Problem:** Every check shows changes due to dynamic content.
+
+**Causes:**
+- PDFs have generation timestamps
+- Page numbers or dates change
+- Dynamic watermarks or headers
+
+**Solutions:**
+- Use **Ignore text** to filter out timestamps
+- Add regex patterns to ignore: `/Generated on .*/`
+- Use **Extract text** to monitor only specific sections
+</Accordion>
+
+<Accordion title="Filter Doesn't Match">
+**Problem:** Extract text filter returns nothing.
+
+**Debug steps:**
+1. Check preview to see actual extracted text
+2. Verify regex pattern is correct
+3. Test regex in online regex tester
+4. Check for extra spaces or line breaks
+5. Try simpler patterns first
+</Accordion>
+
+## Monitoring Strategies
+
+### Strategy: Version Tracking
+
+**Goal:** Track when a new version is released.
+
+**Setup:**
+- **Extract text:** `/Version\s+[\d.]+/`
+- **Trigger text:** `Version`
+
+**Result:** Notified when version number changes.
+
+### Strategy: Content Watchdog
+
+**Goal:** Monitor entire document for any change.
+
+**Setup:**
+- No filters (monitor everything)
+- **Ignore text:** Add dynamic elements (dates, timestamps)
+
+**Result:** Catch all content changes, excluding known dynamic parts.
+
+### Strategy: Keyword Alerts
+
+**Goal:** Alert only on specific terms appearing.
+
+**Setup:**
+- **Trigger text:** `URGENT`, `ACTION REQUIRED`, `DEADLINE`
+
+**Result:** Silent until critical keywords appear.
+
+### Strategy: Section Monitoring
+
+**Goal:** Track changes in specific sections only.
+
+**Setup:**
+- **Extract text:** `/Section 3\.1.*?(?=Section 3\.2|$)/s`
+
+**Result:** Only monitor Section 3.1 content.
+
+## Common Patterns
+
+### Pattern: Monitor Price Lists
+```regex
+/\$\d+\.\d{2}/
+/€\d+,\d{2}/
+```
+*Use case:* Extract all prices from price list PDFs.
+
+### Pattern: Track Effective Dates
+```regex
+/Effective Date:.*\d{4}/
+/Valid from.*to.*/
+```
+*Use case:* Monitor when policy or contract dates change.
+
+### Pattern: Monitor Availability
+```text
+In Stock
+Available
+Backorder
+Discontinued
+```
+*Use case:* Track product availability in catalog PDFs.
+
+### Pattern: Legal Document Tracking
+```regex
+/ARTICLE.*?(?=ARTICLE|$)/s
+```
+*Use case:* Extract all articles from legal documents.
+
+## Performance Considerations
+
+### Large PDFs
+
+For PDFs with hundreds of pages:
+
+- Use **Extract text** filters to reduce content
+- Increase check interval to reduce server load
+- Consider monitoring only a specific URL that generates a smaller PDF subset
+
+### Frequently Updated PDFs
+
+If the PDF URL updates often:
+
+- Use **Ignore text** to filter dynamic content
+- Set appropriate check frequency
+- Use trigger keywords to reduce notification noise
+
+## Limitations
+
+<Warning>
+**PDF Monitoring Limitations:**
+
+1. **Images and graphics** are not extracted or monitored
+2. **Scanned PDFs** (images of text) may not extract properly without OCR
+3. **Password-protected PDFs** cannot be monitored
+4. **Dynamic PDFs** with generation timestamps may show false changes
+5. **Complex layouts** may extract text in unexpected order
+6. **Font styling** (bold, italic, color) is not preserved
+</Warning>
+
+## Best Practices
+
+<Check>**Do:**</Check>
+- Test your filters with Preview tab
+- Use Ignore text for dynamic content (dates, timestamps)
+- Set appropriate check frequency (PDFs change less often than web pages)
+- Use Extract text regex to focus on specific sections
+- Tag PDF watches separately for easy management
+
+<Check>**Don't:**</Check>
+- Expect images or charts to be monitored
+- Set very frequent checks on large PDFs (resource intensive)
+- Monitor scanned PDFs without OCR preprocessing
+- Forget to ignore dynamic content (page numbers, timestamps)
+
+## Real-World Use Cases
+
+### Government and Regulatory
+- Monitor regulation updates
+- Track policy document changes
+- Follow legislative bill revisions
+- Watch for permit or license updates
+
+### Business and Finance
+- Track financial report releases
+- Monitor pricing lists
+- Follow contract amendments
+- Watch for product specification updates
+
+### Academic and Research
+- Monitor research paper revisions
+- Track syllabus updates
+- Follow conference proceedings
+- Watch for publication releases
+
+### Legal
+- Track case document updates
+- Monitor terms of service changes
+- Follow contract revisions
+- Watch for legal notice updates
+
+## Alternative Approaches
+
+### For Scanned PDFs
+
+If your PDF is a scanned image:
+
+1. Use external OCR service to convert to searchable PDF
+2. Monitor the OCR output URL instead
+3. Or use screenshot-based monitoring (if visual layout matters)
+
+### For Password-Protected PDFs
+
+1. Obtain unprotected version if possible
+2. Use external tool to remove password first
+3. Monitor the unprotected version
+
+### For PDFs Requiring Authentication
+
+1. Use **Request Headers** to add authentication tokens
+2. Configure **Custom Headers** with session cookies
+3. Or download manually and monitor local file (not recommended for automation)
+
+## Related Topics
+
+- [Text Extraction with Regex](/extraction/css-selectors) - Advanced pattern matching
+- [Ignore Text](/features/conditional-monitoring) - Filtering unwanted content
+- [Trigger Keywords](/features/conditional-monitoring) - Conditional notifications
+- [CSS Selectors](/extraction/css-selectors) - For HTML content
+- [XPath](/extraction/xpath) - For XML/structured data

@@ -1,0 +1,533 @@
+---
+title: Scheduling
+description: Control when watches run with flexible time-based scheduling and timezone support
+---
+
+# Scheduling
+
+Scheduling allows you to control exactly when changedetection.io checks websites for changes. Set specific time windows, limit checks to business hours, schedule checks in different timezones, or combine with check intervals for precise control.
+
+<img src="https://raw.githubusercontent.com/dgtlmoon/changedetection.io/master/docs/scheduler.png" alt="Scheduling configuration" />
+
+## What is Scheduling?
+
+The scheduler lets you define time windows when change detection should run. This is different from check intervals:
+
+<CardGroup cols={2}>
+  <Card title="Check Interval" icon="clock">
+    **How often** to check
+    
+    Example: Every 6 hours
+  </Card>
+  <Card title="Schedule" icon="calendar">
+    **When** checks can run
+    
+    Example: Only weekdays 9 AM - 5 PM
+  </Card>
+</CardGroup>
+
+<Info>
+  **Scheduling + Intervals work together**
+  
+  - **Check Interval:** "Check every 30 minutes"
+  - **Schedule:** "Only run Monday-Friday, 9 AM to 5 PM EST"
+  
+  **Result:** Checks every 30 minutes, but only during weekday business hours in Eastern Time.
+</Info>
+
+## Why Use Scheduling?
+
+<CardGroup cols={2}>
+  <Card title="Business Hours Only" icon="briefcase">
+    Monitor job postings or business sites only during work hours
+  </Card>
+  <Card title="Reduce Load" icon="gauge">
+    Avoid checking sites during maintenance windows or off-peak times
+  </Card>
+  <Card title="Timezone Matching" icon="earth-americas">
+    Check foreign sites during their business hours
+  </Card>
+  <Card title="Peak Time Monitoring" icon="chart-line">
+    Focus checks during high-activity periods (e.g., sale hours)
+  </Card>
+</CardGroup>
+
+## Setting Up Scheduling
+
+### Global Scheduling (Default for All Watches)
+
+<Steps>
+  <Step title="Go to Settings">
+    Navigate to **Settings** → **Requests** tab
+  </Step>
+  
+  <Step title="Find Schedule Section">
+    Scroll to **"Time scheduler"** section
+  </Step>
+  
+  <Step title="Enable Scheduler">
+    Check **"Use time scheduler"**
+  </Step>
+  
+  <Step title="Configure Days and Times">
+    Set start times and durations for each day of the week
+  </Step>
+  
+  <Step title="Set Timezone (Optional)">
+    Enter a timezone name (e.g., `America/New_York`, `Europe/London`)
+  </Step>
+</Steps>
+
+### Per-Watch Scheduling
+
+Override global scheduling for specific watches:
+
+<Steps>
+  <Step title="Edit Watch">
+    Click **Edit** on any watch
+  </Step>
+  
+  <Step title="Uncheck 'Use Global Settings'">
+    Uncheck **"Use global settings for time between check and scheduler"**
+  </Step>
+  
+  <Step title="Configure Time Schedule">
+    Scroll to **"Time Schedule"** section and configure days/times
+  </Step>
+</Steps>
+
+## Schedule Configuration
+
+### Day Settings
+
+For each day of the week, configure:
+
+| Setting | Description | Example |
+|---------|-------------|----------|
+| **Enabled** | Enable/disable checking on this day | ✅ Monday enabled |
+| **Start At** | Time to begin checking | `09:00` |
+| **Run duration (Hours)** | How many hours to check | `8` hours |
+| **Run duration (Minutes)** | Additional minutes | `30` minutes |
+
+**Example configuration for Monday:**
+```
+✅ Enabled
+Start At: 09:00
+Run duration: 8 hours, 30 minutes
+
+Result: Checks run Monday from 9:00 AM to 5:30 PM
+```
+
+### Quick Presets
+
+Use the quick-select buttons for common schedules:
+
+<Tabs>
+  <Tab title="Business Hours">
+    Automatically sets:
+    - **Monday-Friday:** 9:00 AM - 5:00 PM (8 hours)
+    - **Saturday-Sunday:** Disabled
+    
+    Perfect for monitoring job boards, business websites, or corporate pages.
+  </Tab>
+  
+  <Tab title="Weekends">
+    Automatically sets:
+    - **Monday-Friday:** Disabled
+    - **Saturday-Sunday:** 12:00 AM - 12:00 AM (24 hours)
+    
+    Perfect for monitoring weekend sales, events, or promotions.
+  </Tab>
+</Tabs>
+
+### Timezone Configuration
+
+<Accordion title="Setting Timezone">
+  **Field:** "Optional timezone to run in"
+  
+  Enter a valid timezone name from the [tz database](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones):
+  
+  **Common timezones:**
+  - `America/New_York` (Eastern Time)
+  - `America/Chicago` (Central Time)
+  - `America/Los_Angeles` (Pacific Time)
+  - `Europe/London` (GMT/BST)
+  - `Europe/Paris` (CET/CEST)
+  - `Asia/Tokyo` (JST)
+  - `Australia/Sydney` (AEST/AEDT)
+  
+  **If not set:** Uses the server's local timezone.
+</Accordion>
+
+<Warning>
+  **Timezone format matters**
+  
+  Use the full tz database name:
+  - ✅ `America/New_York`
+  - ❌ `EST` (not accepted)
+  - ❌ `Eastern Time` (not accepted)
+  
+  Incorrect timezone names will cause validation errors.
+</Warning>
+
+## How Scheduling Works
+
+### Schedule + Check Interval Example
+
+**Configuration:**
+```
+Check Interval: Every 1 hour
+
+Schedule:
+  Monday: 09:00 - 17:00 (8 hours)
+  Tuesday: 09:00 - 17:00 (8 hours)
+  Wednesday-Sunday: Disabled
+```
+
+**Behavior:**
+- Monday 9 AM: Check runs ✅
+- Monday 10 AM: Check runs ✅
+- Monday 11 AM: Check runs ✅
+- ...
+- Monday 5 PM: Check runs ✅
+- Monday 6 PM: **Skipped** ❌ (outside schedule)
+- Tuesday 9 AM: Check runs ✅
+- Wednesday: **All checks skipped** ❌
+
+### Outside Schedule Window
+
+When a check is scheduled to run but falls outside the schedule window:
+
+1. **Check is skipped** - No request is made
+2. **Next check waits** - Respects the check interval
+3. **Resumes when window opens** - First check runs at next scheduled window
+
+<Info>
+  **Checks don't queue up**
+  
+  If checks are skipped over the weekend, they don't all run at once on Monday. The normal check interval resumes when the schedule window opens.
+</Info>
+
+## Common Scheduling Scenarios
+
+### Business Hours Only (Monday-Friday, 9-5)
+
+**Use case:** Monitor job postings that only update during business hours
+
+**Configuration:**
+```
+✅ Use time scheduler
+
+Monday-Friday:
+  ✅ Enabled
+  Start At: 09:00
+  Duration: 8 hours
+
+Saturday-Sunday:
+  ❌ Disabled
+
+Timezone: America/New_York
+```
+
+**Combine with:**
+- Check interval: Every 30 minutes
+- Result: Checks every 30 min, Mon-Fri 9 AM-5 PM EST
+
+### Weekend Sales Monitoring
+
+**Use case:** Track weekend-only flash sales or promotions
+
+**Configuration:**
+```
+✅ Use time scheduler
+
+Monday-Friday:
+  ❌ Disabled
+
+Saturday:
+  ✅ Enabled  
+  Start At: 00:00
+  Duration: 24 hours
+
+Sunday:
+  ✅ Enabled
+  Start At: 00:00  
+  Duration: 24 hours
+```
+
+**Combine with:**
+- Check interval: Every 15 minutes
+- Result: Checks every 15 min, weekends only
+
+### International Site Monitoring
+
+**Use case:** Monitor a Japanese e-commerce site during their business hours
+
+**Configuration:**
+```
+✅ Use time scheduler
+
+Monday-Friday:
+  ✅ Enabled
+  Start At: 09:00
+  Duration: 10 hours
+
+Timezone: Asia/Tokyo
+```
+
+**Result:** Checks run 9 AM - 7 PM Japan time, regardless of your server's location.
+
+### Peak Shopping Hours
+
+**Use case:** Monitor product restocks during peak shopping times
+
+**Configuration:**
+```
+✅ Use time scheduler
+
+Every day:
+  ✅ Enabled
+  Start At: 08:00
+  Duration: 4 hours
+
+AND
+
+Every day:
+  Start At: 17:00  
+  Duration: 5 hours
+```
+
+**Note:** You can only set one time window per day, so you'd need separate watches for morning and evening windows, or use a longer duration (8 AM - 10 PM).
+
+### Avoid Maintenance Windows
+
+**Use case:** Don't check a site that's down for maintenance 2-4 AM daily
+
+**Configuration:**
+```
+✅ Use time scheduler
+
+Every day:
+  ✅ Enabled
+  Start At: 04:00
+  Duration: 22 hours
+```
+
+**Result:** Checks skip 2 AM - 4 AM, run rest of the day.
+
+## Advanced Scheduling Techniques
+
+### Combining Multiple Schedules with Tags
+
+Create different schedules for different groups of watches:
+
+<Steps>
+  <Step title="Create Tags">
+    - Tag: "Business Hours Watches"
+    - Tag: "24/7 Critical Watches"
+    - Tag: "Weekend Only"
+  </Step>
+  
+  <Step title="Configure Per-Watch Schedules">
+    Apply different schedules to watches in each tag
+  </Step>
+  
+  <Step title="Manage from Dashboard">
+    Filter by tag to see which watches are active at different times
+  </Step>
+</Steps>
+
+### Reduced Frequency During Off-Hours
+
+**Scenario:** Check every 15 minutes during business hours, every 2 hours overnight
+
+**Solution:** Create two watches for the same URL:
+
+**Watch 1: "Product - Business Hours"**
+```
+Check Interval: Every 15 minutes
+Schedule: Mon-Fri, 9 AM - 5 PM
+```
+
+**Watch 2: "Product - Off-Hours"**
+```
+Check Interval: Every 2 hours  
+Schedule: Mon-Fri, 5 PM - 9 AM + Weekends
+```
+
+<Tip>
+  **Mute one watch's notifications**
+  
+  To avoid duplicate notifications, mute one of the watches and only receive alerts from the other.
+</Tip>
+
+### Seasonal Schedules
+
+For seasonal monitoring (e.g., holiday shopping, tax season):
+
+1. Enable aggressive scheduling during the season
+2. Disable or reduce frequency outside the season
+3. Use tags to quickly enable/disable seasonal watches
+
+## Troubleshooting
+
+### Watch Not Running
+
+<AccordionGroup>
+  <Accordion title="Check is outside schedule window">
+    **Verify:**
+    - Current time is within the scheduled window
+    - Day of week is enabled
+    - Timezone is correct (if set)
+    
+    **Check:**
+    - Look at "Last check" time on watch
+    - If last check was before the schedule window, next check will wait until window opens
+  </Accordion>
+  
+  <Accordion title="Duration is too short">
+    **Problem:** Duration doesn't cover the check interval
+    
+    **Example:**
+    - Check interval: Every 2 hours
+    - Schedule: Start 9:00, Duration 1 hour
+    
+    **Result:** Only one check at 9 AM, next check at 11 AM is outside window
+    
+    **Solution:** Increase duration to at least match check interval, ideally longer
+  </Accordion>
+  
+  <Accordion title="Timezone mismatch">
+    **Symptom:** Schedule seems to run at wrong times
+    
+    **Cause:** Timezone setting doesn't match intended timezone
+    
+    **Fix:**
+    - Verify timezone name is correct
+    - Check current time in that timezone
+    - Test with server's local timezone first (leave timezone blank)
+  </Accordion>
+</AccordionGroup>
+
+### Schedule Not Saving
+
+**Error:** "Invalid timezone name"
+
+**Solution:**
+- Use tz database names: `America/New_York` not `EST`
+- Check spelling and capitalization
+- Leave timezone blank to use server time
+
+### Unexpected Check Times
+
+**Problem:** Checks run at unexpected times despite schedule
+
+**Possible causes:**
+
+1. **Global vs per-watch conflict:**
+   - Check if watch is using global settings
+   - Verify which schedule is actually active
+
+2. **Check interval too long:**
+   - If interval > duration, only one check may run per window
+
+3. **Jitter enabled:**
+   - Random jitter adds ± seconds to check times
+   - Check global settings for jitter configuration
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Match check interval to schedule duration">
+    Ensure your schedule duration is long enough for multiple checks.
+    
+    **Good:**
+    - Interval: 30 minutes
+    - Duration: 8 hours
+    - Result: 16 checks per day
+    
+    **Bad:**
+    - Interval: 2 hours
+    - Duration: 1 hour
+    - Result: Only 1 check per day
+  </Accordion>
+  
+  <Accordion title="Use timezone for international sites">
+    Always set timezone when monitoring sites in different regions.
+    
+    **Example:** Monitoring a UK site from a US server:
+    ```
+    Timezone: Europe/London
+    Schedule: Mon-Fri, 9:00 AM - 5:00 PM
+    ```
+    
+    Ensures checks run during UK business hours.
+  </Accordion>
+  
+  <Accordion title="Test schedule before deploying">
+    After setting a schedule:
+    1. Note the current time in the configured timezone
+    2. Verify it's within the schedule window
+    3. Click "Check now" to test
+    4. Wait for next interval and confirm automatic check runs
+  </Accordion>
+  
+  <Accordion title="Use global schedule as default">
+    Set a sensible global schedule (e.g., business hours) and override only for special cases.
+    
+    This makes managing large numbers of watches easier.
+  </Accordion>
+  
+  <Accordion title="Document your schedules">
+    Use watch titles or tags to indicate schedules:
+    - "Product - Business Hours Only"
+    - Tag: "9-5-monitoring"
+    
+    Makes it easier to understand which watches run when.
+  </Accordion>
+</AccordionGroup>
+
+## Scheduling vs. Other Features
+
+### Scheduling vs. Check Interval
+
+| Feature | Purpose | Example |
+|---------|---------|----------|
+| **Check Interval** | How often to check | Every 30 minutes |
+| **Scheduling** | When checks can run | Only weekdays 9-5 |
+| **Combined** | Precise control | Every 30 min, weekdays 9-5 |
+
+### Scheduling vs. Conditional Monitoring
+
+| Feature | When to Use |
+|---------|-------------|
+| **Scheduling** | Control when checks **run** based on time/day |
+| **Conditional Monitoring** | Control when **notifications send** based on content |
+| **Both** | "Check during business hours, notify only if price < $50" |
+
+## Related Features
+
+<CardGroup cols={2}>
+  <Card title="Check Intervals" icon="clock" href="/features/scheduling">
+    Configure how often watches run
+  </Card>
+  <Card title="Conditional Monitoring" icon="filter" href="/features/conditional-monitoring">
+    Filter notifications based on content conditions
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<Steps>
+  <Step title="Set Up Your First Schedule">
+    Configure business hours scheduling for a test watch
+  </Step>
+  
+  <Step title="Test Timezone Settings">
+    Try monitoring an international site during their business hours
+  </Step>
+  
+  <Step title="Optimize Check Frequency">
+    Combine scheduling with check intervals for efficient monitoring
+  </Step>
+</Steps>

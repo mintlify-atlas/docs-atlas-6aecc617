@@ -1,0 +1,535 @@
+---
+title: Environment Variables
+description: Complete reference for all changedetection.io environment variables and configuration options
+---
+
+Configure changedetection.io using environment variables. Set these in your Docker Compose file, shell environment, or container orchestration platform.
+
+## Server Configuration
+
+<ParamField path="PORT" type="integer" default="5000">
+  HTTP server listening port
+  
+  **Example:**
+  ```yaml
+  environment:
+    - PORT=8080
+  ```
+  
+  Can also be set with the `-p` command-line option.
+</ParamField>
+
+<ParamField path="LISTEN_HOST" type="string" default="0.0.0.0">
+  Host address to bind the server to
+  
+  **Values:**
+  - `0.0.0.0` - Listen on all IPv4 interfaces (default)
+  - `::` - Listen on all IPv6 interfaces
+  - `127.0.0.1` - Localhost only (more secure)
+  
+  **Example:**
+  ```yaml
+  environment:
+    - LISTEN_HOST=127.0.0.1
+  ```
+  
+  Can also be set with the `-h` command-line option.
+</ParamField>
+
+<ParamField path="BASE_URL" type="string">
+  Base URL of your changedetection.io installation
+  
+  **Important:** Required for notification links to work correctly
+  
+  **Example:**
+  ```yaml
+  environment:
+    - BASE_URL=https://changedetection.example.com
+  ```
+  
+  Used in notification templates as `{{ base_url }}`.
+</ParamField>
+
+<ParamField path="USE_X_SETTINGS" type="boolean" default="false">
+  Enable proxy_pass/reverse proxy header support
+  
+  **When enabled, respects these headers:**
+  - `X-Forwarded-For` - Client IP
+  - `X-Forwarded-Proto` - Original protocol (http/https)
+  - `X-Forwarded-Host` - Original hostname
+  - `X-Forwarded-Port` - Original port
+  - `X-Forwarded-Prefix` - URL prefix (e.g., `/app`)
+  
+  **Example Nginx configuration:**
+  ```nginx
+  location /app/ {
+      proxy_pass http://changedetection:5000/;
+      proxy_set_header Host "localhost";
+      proxy_set_header X-Forwarded-Prefix /app;
+  }
+  ```
+  
+  **Docker Compose:**
+  ```yaml
+  environment:
+    - USE_X_SETTINGS=1
+  ```
+  
+  See [Running behind a reverse proxy](https://github.com/dgtlmoon/changedetection.io/wiki/Running-changedetection.io-behind-a-reverse-proxy) for more details.
+</ParamField>
+
+## SSL/TLS Configuration
+
+<ParamField path="SSL_CERT_FILE" type="string" default="cert.pem">
+  Path to SSL certificate file
+  
+  **Example:**
+  ```yaml
+  environment:
+    - SSL_CERT_FILE=/app/ssl/cert.pem
+  volumes:
+    - ./ssl/cert.pem:/app/ssl/cert.pem
+  ```
+  
+  Enables HTTPS mode when both `SSL_CERT_FILE` and `SSL_PRIVKEY_FILE` are set.
+</ParamField>
+
+<ParamField path="SSL_PRIVKEY_FILE" type="string" default="privkey.pem">
+  Path to SSL private key file
+  
+  **Example:**
+  ```yaml
+  environment:
+    - SSL_PRIVKEY_FILE=/app/ssl/privkey.pem
+  volumes:
+    - ./ssl/privkey.pem:/app/ssl/privkey.pem
+  ```
+</ParamField>
+
+## Logging Configuration
+
+<ParamField path="LOGGER_LEVEL" type="string" default="DEBUG">
+  Log verbosity level
+  
+  **Values (most to least verbose):**
+  - `TRACE` - Most detailed, includes all internal operations
+  - `DEBUG` - Detailed debugging information (default)
+  - `INFO` - General informational messages
+  - `SUCCESS` - Success confirmations only
+  - `WARNING` - Warning messages
+  - `ERROR` - Error messages
+  - `CRITICAL` - Critical errors only
+  
+  **Example:**
+  ```yaml
+  environment:
+    - LOGGER_LEVEL=INFO
+  ```
+  
+  Can also be set with the `-l` command-line option.
+</ParamField>
+
+## Browser Configuration
+
+<ParamField path="PLAYWRIGHT_DRIVER_URL" type="string">
+  Playwright/Chrome browser service URL
+  
+  **Format:** `ws://hostname:port` or `wss://hostname:port`
+  
+  **Example with Sockpuppetbrowser:**
+  ```yaml
+  services:
+    changedetection:
+      environment:
+        - PLAYWRIGHT_DRIVER_URL=ws://browser-sockpuppet-chrome:3000
+    
+    browser-sockpuppet-chrome:
+      image: dgtlmoon/sockpuppetbrowser:latest
+      cap_add:
+        - SYS_ADMIN
+  ```
+  
+  **Recommended:** Use Sockpuppetbrowser for best performance and screenshot support.
+</ParamField>
+
+<ParamField path="WEBDRIVER_URL" type="string">
+  WebDriver/Selenium URL (deprecated, use Playwright instead)
+  
+  **Format:** `http://hostname:port/wd/hub`
+  
+  **Example:**
+  ```yaml
+  environment:
+    - WEBDRIVER_URL=http://browser-selenium-chrome:4444/wd/hub
+  ```
+  
+  <Warning>
+    WebDriver is deprecated. Does not support full-page screenshots or proper status code reporting. Use `PLAYWRIGHT_DRIVER_URL` instead.
+  </Warning>
+</ParamField>
+
+## Proxy Configuration
+
+<ParamField path="HTTP_PROXY" type="string">
+  HTTP proxy for non-SSL requests
+  
+  **Formats:**
+  - `http://proxy.example.com:8080`
+  - `socks5://proxy.example.com:1080`
+  - `socks5://user:pass@proxy.example.com:1080`
+  - `socks5h://proxy.example.com:1080` (DNS through proxy)
+  
+  **Example:**
+  ```yaml
+  environment:
+    - HTTP_PROXY=socks5h://10.10.1.10:1080
+  ```
+</ParamField>
+
+<ParamField path="HTTPS_PROXY" type="string">
+  HTTPS proxy for SSL requests
+  
+  **Formats:** Same as `HTTP_PROXY`
+  
+  **Example:**
+  ```yaml
+  environment:
+    - HTTPS_PROXY=socks5h://10.10.1.10:1080
+  ```
+</ParamField>
+
+<ParamField path="NO_PROXY" type="string">
+  Comma-separated list of hosts to exclude from proxying
+  
+  **Example:**
+  ```yaml
+  environment:
+    - NO_PROXY="localhost,192.168.0.0/24,*.internal.com"
+  ```
+  
+  **Common use:** Exclude notification services from proxying to avoid rate limits.
+</ParamField>
+
+## Performance Configuration
+
+<ParamField path="FETCH_WORKERS" type="integer" default="10">
+  Number of concurrent fetcher workers
+  
+  **Example:**
+  ```yaml
+  environment:
+    - FETCH_WORKERS=20
+  ```
+  
+  **Recommendations:**
+  - Increase for faster parallel checking (more CPU/memory)
+  - Decrease for resource-constrained environments
+  - Default of 10 works well for most setups
+</ParamField>
+
+<ParamField path="MINIMUM_SECONDS_RECHECK_TIME" type="integer" default="3">
+  Absolute minimum seconds between rechecks
+  
+  **Example:**
+  ```yaml
+  environment:
+    - MINIMUM_SECONDS_RECHECK_TIME=60
+  ```
+  
+  Overrides any watch-level minimum. Set to `0` to disable.
+</ParamField>
+
+<ParamField path="REQUESTS_RETRY_MAX_COUNT" type="integer" default="6">
+  Maximum retry attempts for network requests
+  
+  **Example:**
+  ```yaml
+  environment:
+    - REQUESTS_RETRY_MAX_COUNT=3
+  ```
+  
+  Retries on connection timeouts, read timeouts, and connection resets (not HTTP status codes).
+</ParamField>
+
+## Screenshot Configuration
+
+<ParamField path="SCREENSHOT_MAX_HEIGHT" type="integer" default="16000">
+  Maximum screenshot height in pixels
+  
+  **Example:**
+  ```yaml
+  environment:
+    - SCREENSHOT_MAX_HEIGHT=32000
+  ```
+  
+  **Warning:** Higher values increase RAM usage significantly.
+</ParamField>
+
+<ParamField path="SCREENSHOT_QUALITY" type="integer" default="72">
+  JPEG screenshot quality (1-100)
+  
+  **Example:**
+  ```yaml
+  environment:
+    - SCREENSHOT_QUALITY=90
+  ```
+  
+  Higher quality = larger files. PNG screenshots always use quality 100.
+</ParamField>
+
+## Security Configuration
+
+<ParamField path="HIDE_REFERER" type="boolean" default="false">
+  Hide Referer header when users click outgoing links
+  
+  **Example:**
+  ```yaml
+  environment:
+    - HIDE_REFERER=true
+  ```
+  
+  Sets `Referrer-Policy: same-origin` to prevent monitored websites from seeing your changedetection.io hostname.
+</ParamField>
+
+<ParamField path="ALLOW_FILE_URI" type="boolean" default="false">
+  Allow monitoring local files with file:// URIs
+  
+  **Example:**
+  ```yaml
+  environment:
+    - ALLOW_FILE_URI=true
+  volumes:
+    - /path/to/files:/files:ro
+  ```
+  
+  **Security Warning:** Only enable if you understand the security implications of allowing file system access.
+</ParamField>
+
+<ParamField path="ALLOW_IANA_RESTRICTED_ADDRESSES" type="boolean" default="false">
+  Allow fetching from private/reserved IP addresses
+  
+  **Example:**
+  ```yaml
+  environment:
+    - ALLOW_IANA_RESTRICTED_ADDRESSES=true
+  ```
+  
+  **Security Warning:** Enabling this allows SSRF attacks. Only enable in trusted networks.
+</ParamField>
+
+## Plugin Configuration
+
+<ParamField path="EXTRA_PACKAGES" type="string">
+  Space-separated list of additional Python packages to install
+  
+  **Example:**
+  ```yaml
+  environment:
+    - EXTRA_PACKAGES=changedetection.io-osint-processor another-plugin
+  ```
+  
+  See [changedetection.io plugins](https://changedetection.io/plugins) for available plugins.
+</ParamField>
+
+## Privacy Configuration
+
+<ParamField path="DISABLE_VERSION_CHECK" type="boolean" default="false">
+  Disable telemetry and version checking
+  
+  **Example:**
+  ```yaml
+  environment:
+    - DISABLE_VERSION_CHECK=true
+  ```
+  
+  For complete privacy if you don't want to use the version check service.
+</ParamField>
+
+## Localization Configuration
+
+<ParamField path="TZ" type="string">
+  Timezone for scheduling and timestamps
+  
+  **Format:** [TZ database name](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones)
+  
+  **Examples:**
+  ```yaml
+  environment:
+    - TZ=America/New_York
+    - TZ=Europe/London
+    - TZ=Asia/Tokyo
+  ```
+</ParamField>
+
+<ParamField path="LC_ALL" type="string" default="en_US.UTF-8">
+  Text processing locale
+  
+  **Example:**
+  ```yaml
+  environment:
+    - LC_ALL=de_DE.UTF-8
+  ```
+  
+  UTF-8 should cover 99.99% of cases.
+</ParamField>
+
+## Testing Configuration
+
+<ParamField path="TESTING_SHUTDOWN_AFTER_DATASTORE_LOAD" type="boolean" default="false">
+  Exit cleanly after datastore initialization (for CI/CD testing)
+  
+  **Example:**
+  ```yaml
+  environment:
+    - TESTING_SHUTDOWN_AFTER_DATASTORE_LOAD=true
+  ```
+  
+  Used in automated upgrade tests.
+</ParamField>
+
+## Complete Docker Compose Example
+
+```yaml
+services:
+  changedetection:
+    image: ghcr.io/dgtlmoon/changedetection.io
+    container_name: changedetection
+    hostname: changedetection
+    
+    environment:
+      # Server Configuration
+      - PORT=5000
+      - LISTEN_HOST=0.0.0.0
+      - BASE_URL=https://changedetection.example.com
+      - USE_X_SETTINGS=1
+      
+      # Logging
+      - LOGGER_LEVEL=INFO
+      
+      # Browser
+      - PLAYWRIGHT_DRIVER_URL=ws://browser-sockpuppet-chrome:3000
+      
+      # Proxy
+      - HTTP_PROXY=socks5h://10.10.1.10:1080
+      - HTTPS_PROXY=socks5h://10.10.1.10:1080
+      - NO_PROXY="localhost,192.168.0.0/24"
+      
+      # Performance
+      - FETCH_WORKERS=10
+      - MINIMUM_SECONDS_RECHECK_TIME=3
+      
+      # Screenshots
+      - SCREENSHOT_MAX_HEIGHT=16000
+      - SCREENSHOT_QUALITY=72
+      
+      # Security
+      - HIDE_REFERER=true
+      
+      # Plugins
+      - EXTRA_PACKAGES=changedetection.io-osint-processor
+      
+      # Privacy
+      - DISABLE_VERSION_CHECK=false
+      
+      # Localization
+      - TZ=America/Los_Angeles
+      - LC_ALL=en_US.UTF-8
+    
+    volumes:
+      - changedetection-data:/datastore
+      - ./proxies.json:/datastore/proxies.json
+    
+    ports:
+      - 127.0.0.1:5000:5000
+    
+    restart: unless-stopped
+    
+    depends_on:
+      - browser-sockpuppet-chrome
+  
+  browser-sockpuppet-chrome:
+    hostname: browser-sockpuppet-chrome
+    image: dgtlmoon/sockpuppetbrowser:latest
+    cap_add:
+      - SYS_ADMIN
+    restart: unless-stopped
+    environment:
+      - SCREEN_WIDTH=1920
+      - SCREEN_HEIGHT=1024
+      - SCREEN_DEPTH=16
+      - MAX_CONCURRENT_CHROME_PROCESSES=10
+
+volumes:
+  changedetection-data:
+```
+
+## Command-Line Options
+
+Some settings can also be configured via command-line arguments:
+
+```bash
+changedetection.py [options]
+
+Options:
+  -s              SSL enable
+  -h HOST         Listen host (default: 0.0.0.0)
+  -p PORT         Listen port (default: 5000)
+  -d PATH         Datastore path
+  -l LEVEL        Log level (TRACE, DEBUG, INFO, SUCCESS, WARNING, ERROR, CRITICAL)
+  -c              Cleanup unused snapshots
+  -C              Create datastore directory if it doesn't exist
+  -P true/false   Set all watches paused (true) or active (false)
+  -u URL          Add URL to watch (can be used multiple times)
+  -u0 'JSON'      Set options for first -u URL
+  -r all          Queue all watches for recheck on startup
+  -r UUID,...     Queue specific watches (comma-separated UUIDs)
+  -b              Batch mode (process queue then exit)
+```
+
+**Example:**
+```bash
+changedetection.py -h 127.0.0.1 -p 8080 -l INFO -d /data
+```
+
+## Environment Variable Priority
+
+When both environment variables and command-line options are set:
+
+1. **Command-line options** take highest priority
+2. **Environment variables** are used if no CLI option is set
+3. **Default values** are used if neither is set
+
+**Example:**
+```bash
+# PORT=8080 set in environment
+changedetection.py -p 9000  # Uses port 9000 (CLI overrides env)
+```
+
+## Troubleshooting
+
+### Variables Not Taking Effect
+
+1. **Check Docker Compose syntax**: Ensure proper YAML formatting
+2. **Restart container**: `docker compose restart changedetection`
+3. **Check logs**: `docker logs changedetection` for parsing errors
+4. **Verify environment**: `docker exec changedetection env | grep VARIABLE_NAME`
+
+### SSL Not Working
+
+1. Verify both `SSL_CERT_FILE` and `SSL_PRIVKEY_FILE` are set
+2. Check certificate files are mounted correctly
+3. Ensure files are readable by the container user
+4. Check logs for SSL initialization messages
+
+### Playwright Not Connecting
+
+1. Verify `PLAYWRIGHT_DRIVER_URL` format: `ws://hostname:port`
+2. Check browser container is running: `docker ps`
+3. Test connectivity: `docker exec changedetection curl -v ws://browser-sockpuppet-chrome:3000`
+4. Check firewall/network policies
+
+## Related Documentation
+
+- [Proxy Setup](/configuration/proxy-setup) - Detailed proxy configuration
+- [Notifications Setup](/configuration/notifications-setup) - BASE_URL usage in notifications
+- [Docker Compose Reference](https://github.com/dgtlmoon/changedetection.io/blob/master/docker-compose.yml) - Official docker-compose.yml

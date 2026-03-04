@@ -1,0 +1,412 @@
+---
+title: System Info
+description: Retrieve system status and statistics
+---
+
+# System Information
+
+Get information about your changedetection.io instance, including watch counts, version, uptime, and queue status.
+
+## Get System Info
+
+<ParamField path="GET" type="endpoint">
+  /api/v1/systeminfo
+</ParamField>
+
+Retrieve current system status and statistics.
+
+### Response Fields
+
+<ResponseField name="watch_count" type="integer">
+  Total number of watches configured in the system
+</ResponseField>
+
+<ResponseField name="tag_count" type="integer">
+  Total number of tags/groups
+</ResponseField>
+
+<ResponseField name="version" type="string">
+  changedetection.io version number
+</ResponseField>
+
+<ResponseField name="uptime" type="number">
+  System uptime in seconds since last restart
+</ResponseField>
+
+<ResponseField name="queue_size" type="integer">
+  Number of watches currently queued for checking
+</ResponseField>
+
+<ResponseField name="overdue_watches" type="array">
+  Array of watch UUIDs that are overdue for their next check
+</ResponseField>
+
+### Example
+
+<CodeGroup>
+```bash cURL
+curl -X GET "http://localhost:5000/api/v1/systeminfo" \
+  -H "x-api-key: YOUR_API_KEY"
+```
+
+```python Python
+import requests
+
+headers = {'x-api-key': 'YOUR_API_KEY'}
+response = requests.get(
+    'http://localhost:5000/api/v1/systeminfo',
+    headers=headers
+)
+print(response.json())
+```
+</CodeGroup>
+
+<ResponseExample>
+```json
+{
+  "watch_count": 42,
+  "tag_count": 5,
+  "version": "0.50.10",
+  "uptime": 172800.5,
+  "queue_size": 3,
+  "overdue_watches": [
+    "095be615-a8ad-4c33-8e9c-c7612fbf6c9f",
+    "7c9e6b8d-f2a1-4e5c-9d3b-8a7f6e4c2d1a"
+  ]
+}
+```
+</ResponseExample>
+
+---
+
+## Understanding System Metrics
+
+### Watch Count
+
+The total number of watches includes:
+- Active (unpaused) watches
+- Paused watches
+- Watches with errors
+
+To get only active watches, filter the watch list:
+
+```python
+import requests
+
+headers = {'x-api-key': 'YOUR_API_KEY'}
+
+# Get all watches
+response = requests.get(
+    'http://localhost:5000/api/v1/watch',
+    headers=headers
+)
+watches = response.json()
+
+# Count active watches
+active_count = sum(1 for w in watches.values() if not w.get('paused'))
+print(f"Active watches: {active_count}")
+```
+
+### Tag Count
+
+The total number of tags/groups in the system. Use this to track organization:
+
+```python
+response = requests.get(
+    'http://localhost:5000/api/v1/tags',
+    headers=headers
+)
+tags = response.json()
+print(f"Total tags: {len(tags)}")
+```
+
+### Uptime
+
+Uptime is measured in seconds since the last application restart. Convert to human-readable format:
+
+```python
+import requests
+from datetime import timedelta
+
+headers = {'x-api-key': 'YOUR_API_KEY'}
+response = requests.get(
+    'http://localhost:5000/api/v1/systeminfo',
+    headers=headers
+)
+
+uptime_seconds = response.json()['uptime']
+uptime = timedelta(seconds=int(uptime_seconds))
+print(f"Uptime: {uptime}")  # e.g., "2 days, 0:00:00"
+```
+
+### Queue Size
+
+The number of watches currently queued for checking. A high queue size may indicate:
+
+- Many watches being checked simultaneously
+- Slow fetch operations (e.g., browser-based fetching)
+- System resource constraints
+
+<Info>
+Normal queue sizes vary based on your setup. A queue of 0-10 is typical. Consistently high queues (50+) may indicate performance issues.
+</Info>
+
+### Overdue Watches
+
+Watches that haven't been checked within their configured interval (plus a 5-minute grace period). Overdue watches may indicate:
+
+- System is too busy to keep up with check intervals
+- Watch has errors preventing checks
+- Queue is backed up
+
+<Warning>
+If you have many overdue watches, consider:
+- Increasing check intervals
+- Adding more worker threads
+- Reducing the number of active watches
+- Using faster fetch backends
+</Warning>
+
+---
+
+## Health Monitoring
+
+Use the system info endpoint for health checks and monitoring:
+
+### Basic Health Check
+
+```python
+import requests
+import sys
+
+headers = {'x-api-key': 'YOUR_API_KEY'}
+
+try:
+    response = requests.get(
+        'http://localhost:5000/api/v1/systeminfo',
+        headers=headers,
+        timeout=5
+    )
+    
+    if response.status_code == 200:
+        info = response.json()
+        print(f"✓ System healthy")
+        print(f"  Watches: {info['watch_count']}")
+        print(f"  Queue: {info['queue_size']}")
+        print(f"  Overdue: {len(info['overdue_watches'])}")
+        sys.exit(0)
+    else:
+        print(f"✗ System unhealthy: {response.status_code}")
+        sys.exit(1)
+except Exception as e:
+    print(f"✗ System unreachable: {e}")
+    sys.exit(1)
+```
+
+### Advanced Health Check
+
+```python
+import requests
+
+headers = {'x-api-key': 'YOUR_API_KEY'}
+response = requests.get(
+    'http://localhost:5000/api/v1/systeminfo',
+    headers=headers
+)
+info = response.json()
+
+# Define health thresholds
+MAX_QUEUE_SIZE = 50
+MAX_OVERDUE_PERCENT = 10
+
+issues = []
+
+# Check queue size
+if info['queue_size'] > MAX_QUEUE_SIZE:
+    issues.append(f"Queue size too high: {info['queue_size']}")
+
+# Check overdue watches
+overdue_percent = (len(info['overdue_watches']) / info['watch_count']) * 100
+if overdue_percent > MAX_OVERDUE_PERCENT:
+    issues.append(f"Too many overdue watches: {overdue_percent:.1f}%")
+
+# Report
+if issues:
+    print("⚠️  Health warnings:")
+    for issue in issues:
+        print(f"  - {issue}")
+else:
+    print("✓ All health checks passed")
+```
+
+---
+
+## Monitoring Dashboard
+
+Create a simple monitoring dashboard:
+
+```python
+import requests
+import time
+from datetime import timedelta
+
+headers = {'x-api-key': 'YOUR_API_KEY'}
+BASE_URL = 'http://localhost:5000/api/v1'
+
+def get_stats():
+    # System info
+    info = requests.get(f'{BASE_URL}/systeminfo', headers=headers).json()
+    
+    # All watches
+    watches = requests.get(f'{BASE_URL}/watch', headers=headers).json()
+    
+    # Count watches by status
+    active = sum(1 for w in watches.values() if not w.get('paused'))
+    paused = sum(1 for w in watches.values() if w.get('paused'))
+    with_errors = sum(1 for w in watches.values() if w.get('last_error'))
+    
+    # Format uptime
+    uptime = timedelta(seconds=int(info['uptime']))
+    
+    # Print dashboard
+    print("\n" + "="*50)
+    print(f"  changedetection.io v{info['version']}")
+    print("="*50)
+    print(f"Uptime:           {uptime}")
+    print(f"Total Watches:    {info['watch_count']}")
+    print(f"  - Active:       {active}")
+    print(f"  - Paused:       {paused}")
+    print(f"  - With Errors:  {with_errors}")
+    print(f"Tags:             {info['tag_count']}")
+    print(f"Queue Size:       {info['queue_size']}")
+    print(f"Overdue Watches:  {len(info['overdue_watches'])}")
+    print("="*50)
+
+if __name__ == '__main__':
+    while True:
+        get_stats()
+        time.sleep(30)  # Update every 30 seconds
+```
+
+---
+
+## Integration Examples
+
+### Prometheus Metrics
+
+Export metrics for Prometheus:
+
+```python
+from flask import Flask, Response
+import requests
+
+app = Flask(__name__)
+
+HEADERS = {'x-api-key': 'YOUR_API_KEY'}
+BASE_URL = 'http://localhost:5000/api/v1'
+
+@app.route('/metrics')
+def metrics():
+    info = requests.get(f'{BASE_URL}/systeminfo', headers=HEADERS).json()
+    
+    metrics = f"""
+# HELP changedetection_watch_count Total number of watches
+# TYPE changedetection_watch_count gauge
+changedetection_watch_count {info['watch_count']}
+
+# HELP changedetection_tag_count Total number of tags
+# TYPE changedetection_tag_count gauge
+changedetection_tag_count {info['tag_count']}
+
+# HELP changedetection_queue_size Current queue size
+# TYPE changedetection_queue_size gauge
+changedetection_queue_size {info['queue_size']}
+
+# HELP changedetection_overdue_watches Number of overdue watches
+# TYPE changedetection_overdue_watches gauge
+changedetection_overdue_watches {len(info['overdue_watches'])}
+
+# HELP changedetection_uptime_seconds System uptime in seconds
+# TYPE changedetection_uptime_seconds counter
+changedetection_uptime_seconds {info['uptime']}
+"""
+    return Response(metrics, mimetype='text/plain')
+
+if __name__ == '__main__':
+    app.run(port=9090)
+```
+
+### Grafana Dashboard
+
+Use the Prometheus metrics above with Grafana queries:
+
+```promql
+# Watch count over time
+changedetection_watch_count
+
+# Queue size trend
+rate(changedetection_queue_size[5m])
+
+# Overdue watch percentage
+(changedetection_overdue_watches / changedetection_watch_count) * 100
+```
+
+### Uptime Monitoring
+
+Integrate with uptime monitoring services:
+
+```python
+import requests
+
+def check_health():
+    try:
+        response = requests.get(
+            'http://localhost:5000/api/v1/systeminfo',
+            headers={'x-api-key': 'YOUR_API_KEY'},
+            timeout=5
+        )
+        return response.status_code == 200
+    except:
+        return False
+
+# Use with your monitoring service
+if check_health():
+    # Ping monitoring service (e.g., healthchecks.io)
+    requests.get('https://hc-ping.com/your-uuid')
+```
+
+---
+
+## Version Information
+
+The `version` field follows semantic versioning:
+
+```
+MAJOR.MINOR.PATCH
+```
+
+Example: `0.50.10`
+- Major: 0 (pre-1.0)
+- Minor: 50 (feature releases)
+- Patch: 10 (bug fixes)
+
+Use version info for compatibility checks:
+
+```python
+import requests
+from packaging import version
+
+headers = {'x-api-key': 'YOUR_API_KEY'}
+response = requests.get(
+    'http://localhost:5000/api/v1/systeminfo',
+    headers=headers
+)
+
+current_version = response.json()['version']
+required_version = '0.50.0'
+
+if version.parse(current_version) >= version.parse(required_version):
+    print(f"✓ Version {current_version} meets requirements")
+else:
+    print(f"✗ Version {current_version} is too old")
+```

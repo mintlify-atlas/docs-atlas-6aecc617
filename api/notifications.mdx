@@ -1,0 +1,452 @@
+---
+title: Notifications
+description: Configure global notification endpoints
+---
+
+# Notification Management
+
+Manage global notification URLs that can be used across all your watches. changedetection.io uses [Apprise](https://github.com/caronc/apprise) for notifications, supporting 80+ notification services.
+
+## Notification URL Format
+
+Notification URLs follow the Apprise format:
+
+```
+service://credentials/target
+```
+
+### Common Services
+
+<CardGroup cols={2}>
+  <Card title="Email" icon="envelope">
+    ```
+    mailto://user:password@gmail.com
+    ```
+  </Card>
+  
+  <Card title="Discord" icon="discord">
+    ```
+    discord://webhook_id/webhook_token
+    ```
+  </Card>
+  
+  <Card title="Slack" icon="slack">
+    ```
+    slack://tokenA/tokenB/tokenC
+    ```
+  </Card>
+  
+  <Card title="Telegram" icon="telegram">
+    ```
+    tgram://bottoken/ChatID
+    ```
+  </Card>
+</CardGroup>
+
+For a complete list of supported services, see the [Apprise documentation](https://github.com/caronc/apprise#supported-notifications).
+
+---
+
+## Get Notification URLs
+
+<ParamField path="GET" type="endpoint">
+  /api/v1/notifications
+</ParamField>
+
+Retrieve the list of configured global notification URLs.
+
+### Response Fields
+
+<ResponseField name="notification_urls" type="array">
+  Array of notification URL strings in Apprise format
+</ResponseField>
+
+### Example
+
+<CodeGroup>
+```bash cURL
+curl -X GET "http://localhost:5000/api/v1/notifications" \
+  -H "x-api-key: YOUR_API_KEY"
+```
+
+```python Python
+import requests
+
+headers = {'x-api-key': 'YOUR_API_KEY'}
+response = requests.get(
+    'http://localhost:5000/api/v1/notifications',
+    headers=headers
+)
+print(response.json())
+```
+</CodeGroup>
+
+<ResponseExample>
+```json
+{
+  "notification_urls": [
+    "mailto:admin@example.com",
+    "discord://webhook_id/webhook_token",
+    "tgram://bottoken/ChatID"
+  ]
+}
+```
+</ResponseExample>
+
+---
+
+## Add Notification URLs
+
+<ParamField path="POST" type="endpoint">
+  /api/v1/notifications
+</ParamField>
+
+Add one or more notification URLs to the global configuration.
+
+### Request Body
+
+<ParamField body="notification_urls" type="array" required>
+  Array of notification URLs in Apprise format (max 100 URLs)
+</ParamField>
+
+### Example
+
+<CodeGroup>
+```bash cURL
+curl -X POST "http://localhost:5000/api/v1/notifications" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "notification_urls": [
+      "mailto:admin@example.com",
+      "discord://webhook_id/webhook_token"
+    ]
+  }'
+```
+
+```python Python
+import requests
+
+headers = {
+    'x-api-key': 'YOUR_API_KEY',
+    'Content-Type': 'application/json'
+}
+data = {
+    'notification_urls': [
+        'mailto:admin@example.com',
+        'discord://webhook_id/webhook_token'
+    ]
+}
+
+response = requests.post(
+    'http://localhost:5000/api/v1/notifications',
+    headers=headers,
+    json=data
+)
+print(response.json())
+```
+</CodeGroup>
+
+<ResponseExample>
+```json
+{
+  "notification_urls": [
+    "mailto:admin@example.com",
+    "discord://webhook_id/webhook_token"
+  ]
+}
+```
+</ResponseExample>
+
+<Warning>
+Notification URLs are validated using Apprise. Invalid URLs will be rejected with a 400 error.
+</Warning>
+
+---
+
+## Replace All Notification URLs
+
+<ParamField path="PUT" type="endpoint">
+  /api/v1/notifications
+</ParamField>
+
+Replace the entire list of notification URLs. This will delete all existing URLs and replace them with the provided list.
+
+### Request Body
+
+<ParamField body="notification_urls" type="array" required>
+  Array of notification URLs (can be empty to clear all notifications)
+</ParamField>
+
+### Example
+
+<CodeGroup>
+```bash cURL
+curl -X PUT "http://localhost:5000/api/v1/notifications" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "notification_urls": [
+      "mailto:newadmin@example.com"
+    ]
+  }'
+```
+
+```python Python
+import requests
+
+headers = {
+    'x-api-key': 'YOUR_API_KEY',
+    'Content-Type': 'application/json'
+}
+data = {
+    'notification_urls': [
+        'mailto:newadmin@example.com'
+    ]
+}
+
+response = requests.put(
+    'http://localhost:5000/api/v1/notifications',
+    headers=headers,
+    json=data
+)
+print(response.json())
+```
+</CodeGroup>
+
+<ResponseExample>
+```json
+{
+  "notification_urls": [
+    "mailto:newadmin@example.com"
+  ]
+}
+```
+</ResponseExample>
+
+---
+
+## Delete Notification URLs
+
+<ParamField path="DELETE" type="endpoint">
+  /api/v1/notifications
+</ParamField>
+
+Delete specific notification URLs from the configuration.
+
+### Request Body
+
+<ParamField body="notification_urls" type="array" required>
+  Array of notification URLs to delete
+</ParamField>
+
+### Example
+
+<CodeGroup>
+```bash cURL
+curl -X DELETE "http://localhost:5000/api/v1/notifications" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "notification_urls": [
+      "mailto:admin@example.com"
+    ]
+  }'
+```
+
+```python Python
+import requests
+
+headers = {
+    'x-api-key': 'YOUR_API_KEY',
+    'Content-Type': 'application/json'
+}
+data = {
+    'notification_urls': [
+        'mailto:admin@example.com'
+    ]
+}
+
+response = requests.delete(
+    'http://localhost:5000/api/v1/notifications',
+    headers=headers,
+    json=data
+)
+print(response.status_code)  # 204
+```
+</CodeGroup>
+
+<Info>
+If none of the specified URLs exist in the configuration, the API returns a 400 error.
+</Info>
+
+---
+
+## Notification URL Validation
+
+All notification URLs are validated before being saved. The validation checks:
+
+- URL format is correct for Apprise
+- Service type is supported
+- Required credentials are present
+
+### Invalid URL Examples
+
+```json
+// Missing credentials
+"mailto:@gmail.com"  // ❌ Invalid
+
+// Invalid service
+"unknownservice://token"  // ❌ Invalid
+
+// Malformed URL
+"discord:/webhook_id"  // ❌ Invalid (missing second slash)
+
+// Valid URLs
+"mailto:user:password@gmail.com"  // ✓ Valid
+"discord://webhook_id/webhook_token"  // ✓ Valid
+```
+
+---
+
+## Per-Watch vs Global Notifications
+
+You can configure notifications at three levels:
+
+<Steps>
+  <Step title="Global Notifications">
+    Set default notifications for all watches via `/api/v1/notifications`
+  </Step>
+  
+  <Step title="Tag Notifications">
+    Override global settings for watches in a specific tag
+  </Step>
+  
+  <Step title="Watch Notifications">
+    Override both global and tag settings for individual watches
+  </Step>
+</Steps>
+
+### Example: Watch-Specific Notifications
+
+```python
+import requests
+
+headers = {
+    'x-api-key': 'YOUR_API_KEY',
+    'Content-Type': 'application/json'
+}
+
+# Create watch with custom notifications
+data = {
+    'url': 'https://example.com',
+    'notification_urls': [
+        'mailto:custom@example.com',
+        'discord://custom_webhook_id/custom_token'
+    ]
+}
+
+response = requests.post(
+    'http://localhost:5000/api/v1/watch',
+    headers=headers,
+    json=data
+)
+```
+
+---
+
+## Supported Notification Services
+
+<AccordionGroup>
+  <Accordion title="Email Services">
+    - **Gmail**: `mailto://user:password@gmail.com`
+    - **Office365**: `mailto://user:password@office365.com`
+    - **Custom SMTP**: `mailto://user:password@smtp.example.com:587`
+    - **Mailgun**: `mailgun://user@domain/apikey`
+    - **SendGrid**: `sendgrid://apikey:from@example.com`
+  </Accordion>
+
+  <Accordion title="Chat & Messaging">
+    - **Discord**: `discord://webhook_id/webhook_token`
+    - **Slack**: `slack://tokenA/tokenB/tokenC`
+    - **Telegram**: `tgram://bottoken/ChatID`
+    - **Microsoft Teams**: `msteams://TokenA/TokenB/TokenC`
+    - **Mattermost**: `mmost://hostname/authkey`
+    - **Rocket.Chat**: `rocket://user:password@hostname/#channel`
+  </Accordion>
+
+  <Accordion title="Mobile Push">
+    - **Pushover**: `pover://user@token`
+    - **Pushbullet**: `pbul://accesstoken`
+    - **Pushy**: `pushy://apikey@device`
+    - **Gotify**: `gotify://hostname/token`
+    - **Apprise API**: `apprise://hostname/token`
+  </Accordion>
+
+  <Accordion title="SMS Services">
+    - **Twilio**: `twilio://AccountSid:AuthToken@FromPhoneNo`
+    - **Nexmo**: `nexmo://ApiKey:ApiSecret@FromPhoneNo`
+    - **AWS SNS**: `sns://AccessKeyID/AccessKeySecret/RegionName/+PhoneNo`
+  </Accordion>
+
+  <Accordion title="Other Services">
+    - **Webhooks**: `json://hostname/path` or `xml://hostname/path`
+    - **IFTTT**: `ifttt://webhooks_key/event_name`
+    - **Home Assistant**: `hassio://hostname/token`
+    - **Matrix**: `matrix://user:token@hostname`
+    - **Zulip**: `zulip://botname@organization/token`
+  </Accordion>
+</AccordionGroup>
+
+For the complete list, see [Apprise Supported Notifications](https://github.com/caronc/apprise#supported-notifications).
+
+---
+
+## Notification Customization
+
+You can customize notification content per watch:
+
+<ParamField body="notification_title" type="string">
+  Custom title template (supports variables like `{{watch_url}}`, `{{watch_title}}`)
+</ParamField>
+
+<ParamField body="notification_body" type="string">
+  Custom body template (supports the same variables)
+</ParamField>
+
+<ParamField body="notification_format" type="string">
+  Format: `text`, `html`, `htmlcolor`, `markdown`, or `System default`
+</ParamField>
+
+### Example with Custom Template
+
+```python
+data = {
+    'url': 'https://example.com',
+    'notification_urls': ['mailto:admin@example.com'],
+    'notification_title': 'Change detected on {{watch_title}}',
+    'notification_body': 'URL: {{watch_url}}\n\nChanges:\n{{diff}}',
+    'notification_format': 'text'
+}
+```
+
+---
+
+## Testing Notifications
+
+To test a notification URL before adding it:
+
+1. Add it to a watch temporarily
+2. Trigger a manual recheck with changes
+3. Verify the notification arrives
+4. If successful, add to global configuration
+
+Alternatively, use the Apprise CLI to test:
+
+```bash
+# Install Apprise CLI
+pip install apprise
+
+# Test a notification URL
+apprise -b "Test message" "discord://webhook_id/webhook_token"
+```

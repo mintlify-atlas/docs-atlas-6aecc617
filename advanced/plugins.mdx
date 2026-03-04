@@ -1,0 +1,428 @@
+---
+title: Plugin System
+description: Extend changedetection.io with custom processors and UI enhancements using the plugin system
+---
+
+Changedetection.io features a flexible plugin system powered by [pluggy](https://pluggy.readthedocs.io/) that allows you to extend functionality without modifying the core codebase.
+
+## Plugin Types
+
+Currently supported plugin types:
+
+<CardGroup cols={2}>
+  <Card title="UI Stats Tab Plugins" icon="chart-bar">
+    Add custom statistics and visualizations to the Edit page Stats tab
+  </Card>
+  <Card title="Processor Plugins" icon="microchip">
+    Create custom change detection processors for specialized use cases
+  </Card>
+</CardGroup>
+
+## UI Stats Tab Plugins
+
+These plugins add custom content to the **Stats** tab in the watch Edit page. Useful for displaying custom analytics, metrics, or visualizations.
+
+### Creating a Stats Plugin
+
+<Steps>
+  <Step title="Create plugin file">
+    Create a Python file in your plugin directory:
+
+    ```python my_stats_plugin.py
+    import pluggy
+    from loguru import logger
+
+    # Register as a changedetection.io plugin
+    global_hookimpl = pluggy.HookimplMarker("changedetectionio")
+    ```
+  </Step>
+
+  <Step title="Implement the hook">
+    Use the `ui_edit_stats_extras` hook to add your content:
+
+    ```python
+    @global_hookimpl
+    def ui_edit_stats_extras(watch):
+        """Add custom content to the stats tab"""
+        # Calculate your statistics
+        my_stat = calculate_something(watch)
+        
+        # Return HTML as a string
+        html = f"""
+        <div class="my-plugin-stats">
+            <h4>My Custom Statistics</h4>
+            <p>Statistic value: {my_stat}</p>
+        </div>
+        """
+        return html
+    ```
+  </Step>
+
+  <Step title="Access watch data">
+    The `watch` object provides access to all watch properties:
+
+    ```python
+    def calculate_something(watch):
+        # Access watch properties
+        url = watch.get('url')
+        history_count = len(watch.history)
+        
+        # Get latest snapshot
+        if watch.history.keys():
+            latest_key = list(watch.history.keys())[-1]
+            content = watch.get_history_snapshot(timestamp=latest_key)
+            word_count = len(content.split())
+            return word_count
+        
+        return 0
+    ```
+  </Step>
+</Steps>
+
+### Complete Example: Word Count Plugin
+
+Here's a full working example that adds word count statistics:
+
+```python word_count_plugin.py
+import pluggy
+from loguru import logger
+
+global_hookimpl = pluggy.HookimplMarker("changedetectionio")
+
+def count_words_in_history(watch):
+    """Count words in the latest snapshot"""
+    try:
+        if not watch.history.keys():
+            return 0
+            
+        latest_key = list(watch.history.keys())[-1]
+        latest_content = watch.get_history_snapshot(timestamp=latest_key)
+        return len(latest_content.split())
+    except Exception as e:
+        logger.error(f"Error counting words: {str(e)}")
+        return 0
+
+@global_hookimpl
+def ui_edit_stats_extras(watch):
+    """Add word count to the Stats tab"""
+    word_count = count_words_in_history(watch)
+    
+    html = f"""
+    <div class="word-count-stats">
+        <h4>Content Analysis</h4>
+        <table class="pure-table">
+            <tbody>
+                <tr>
+                    <td>Word count (latest snapshot)</td>
+                    <td>{word_count:,}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    """
+    return html
+```
+
+## Processor Plugins
+
+Create custom processors for specialized change detection scenarios.
+
+### Processor Architecture
+
+Processors must implement specific methods and can extend the API schema:
+
+```python custom_processor/__init__.py
+from changedetectionio.processors.base import ProcessorBase
+
+class MyCustomProcessor(ProcessorBase):
+    """Custom processor for specialized monitoring"""
+    
+    def run(self, uuid, preferred_proxy=None, check_jitter=False):
+        """
+        Main processing method called for each check.
+        
+        Returns:
+            - changed_detected (bool)
+            - update_obj (dict): Data to update in watch
+            - contents (str): Processed content for storage
+        """
+        # Fetch content
+        fetcher = self.get_fetcher()
+        contents = fetcher.run(uuid, preferred_proxy)
+        
+        # Your custom processing logic
+        processed = self.process_content(contents)
+        
+        # Detect changes
+        changed = self.detect_changes(processed)
+        
+        return changed, {}, processed
+    
+    def process_content(self, contents):
+        """Implement your custom processing logic"""
+        # Example: extract specific data
+        return contents
+    
+    def detect_changes(self, contents):
+        """Implement your change detection logic"""
+        # Compare with previous check
+        return True
+```
+
+### API Schema Extension
+
+Processors can extend the Watch API to accept custom configuration:
+
+```yaml api.yaml
+components:
+  schemas:
+    processor_config_my_custom:
+      type: object
+      properties:
+        custom_threshold:
+          type: number
+          description: Custom threshold value
+          default: 10
+        enable_feature:
+          type: boolean
+          description: Enable custom feature
+          default: false
+```
+
+This makes `processor_config_my_custom` available in watch API calls:
+
+```bash
+curl -X POST http://localhost:5000/api/v1/watch \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://example.com",
+    "processor": "my_custom",
+    "processor_config_my_custom": {
+      "custom_threshold": 20,
+      "enable_feature": true
+    }
+  }'
+```
+
+## Plugin Loading
+
+### Built-in Plugin Directories
+
+Plugins are automatically loaded from:
+
+- `changedetectionio/processors/` - Processor plugins
+- Additional directories defined in `pluggy_interface.py`
+
+### External Plugin Packages
+
+Install plugins from PyPI or pip packages using the `EXTRA_PACKAGES` environment variable:
+
+```bash Docker
+docker run -d \
+  -e EXTRA_PACKAGES="changedetection.io-osint-processor my-custom-plugin" \
+  -p 5000:5000 \
+  dgtlmoon/changedetection.io
+```
+
+```yaml docker-compose.yml
+services:
+  changedetection:
+    image: dgtlmoon/changedetection.io
+    environment:
+      - EXTRA_PACKAGES=changedetection.io-osint-processor my-custom-plugin
+```
+
+```bash pip Installation
+EXTRA_PACKAGES="my-custom-plugin" changedetection.io
+```
+
+### Setuptools Entry Points
+
+Package your plugin for distribution with setuptools:
+
+```python setup.py
+from setuptools import setup, find_packages
+
+setup(
+    name="changedetection-my-plugin",
+    version="1.0.0",
+    packages=find_packages(),
+    install_requires=[
+        "changedetection.io",
+    ],
+    entry_points={
+        "changedetectionio": [
+            "my_plugin = my_plugin.module:MyPlugin",
+        ],
+    },
+)
+```
+
+## Hook Specifications
+
+### Available Hooks
+
+<AccordionGroup>
+  <Accordion title="ui_edit_stats_extras">
+    Add custom content to the Stats tab in the watch Edit page.
+
+    **Signature:**
+    ```python
+    @global_hookimpl
+    def ui_edit_stats_extras(watch):
+        return "<html>...</html>"
+    ```
+
+    **Parameters:**
+    - `watch` (Watch): Watch object with all properties and history
+
+    **Returns:**
+    - `str`: HTML content to display in Stats tab
+  </Accordion>
+</AccordionGroup>
+
+<Note>
+  More hooks will be added in future versions. Check `pluggy_interface.py` for the latest hook specifications.
+</Note>
+
+## Best Practices
+
+### Error Handling
+
+Always wrap plugin code in try-except blocks:
+
+```python
+@global_hookimpl
+def ui_edit_stats_extras(watch):
+    try:
+        result = calculate_something(watch)
+        return generate_html(result)
+    except Exception as e:
+        logger.error(f"Plugin error: {str(e)}")
+        return "<p>Error calculating statistics</p>"
+```
+
+### Performance
+
+- Keep processing lightweight (Stats tab loads for every watch edit)
+- Cache expensive calculations
+- Use async operations for external API calls
+- Avoid blocking operations
+
+### Logging
+
+Use loguru for consistent logging:
+
+```python
+from loguru import logger
+
+logger.info("Plugin initialized")
+logger.debug(f"Processing watch: {watch.get('url')}")
+logger.error(f"Error: {str(e)}")
+```
+
+## Example Use Cases
+
+<AccordionGroup>
+  <Accordion title="SEO Metrics Plugin">
+    Display SEO-related statistics:
+
+    ```python
+    @global_hookimpl
+    def ui_edit_stats_extras(watch):
+        content = get_latest_snapshot(watch)
+        
+        # Calculate SEO metrics
+        title_count = content.count('<title>')
+        meta_desc = extract_meta_description(content)
+        h1_count = content.count('<h1')
+        
+        return f"""
+        <div class="seo-stats">
+            <h4>SEO Analysis</h4>
+            <table class="pure-table">
+                <tr><td>Title tags</td><td>{title_count}</td></tr>
+                <tr><td>Meta description</td><td>{meta_desc}</td></tr>
+                <tr><td>H1 headings</td><td>{h1_count}</td></tr>
+            </table>
+        </div>
+        """
+    ```
+  </Accordion>
+
+  <Accordion title="Readability Score Plugin">
+    Calculate content readability metrics:
+
+    ```python
+    import textstat
+
+    @global_hookimpl
+    def ui_edit_stats_extras(watch):
+        content = get_text_content(watch)
+        
+        flesch = textstat.flesch_reading_ease(content)
+        grade = textstat.flesch_kincaid_grade(content)
+        
+        return f"""
+        <div class="readability-stats">
+            <h4>Readability Metrics</h4>
+            <p>Flesch Score: {flesch:.1f}</p>
+            <p>Grade Level: {grade:.1f}</p>
+        </div>
+        """
+    ```
+  </Accordion>
+
+  <Accordion title="Custom Alert Processor">
+    Processor that sends alerts to external systems:
+
+    ```python
+    class CustomAlertProcessor(ProcessorBase):
+        def run(self, uuid, preferred_proxy=None):
+            # Fetch and process
+            fetcher = self.get_fetcher()
+            contents = fetcher.run(uuid)
+            
+            # Custom logic
+            if self.detect_critical_change(contents):
+                self.send_external_alert(uuid)
+            
+            return True, {}, contents
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+### Plugin Not Loading
+
+1. Check plugin file is in correct directory
+2. Verify `global_hookimpl` decorator is used
+3. Check logs for import errors: `docker logs changedetection`
+4. Ensure plugin has no syntax errors
+
+### Stats Not Appearing
+
+1. Verify hook returns valid HTML string
+2. Check browser console for JavaScript errors
+3. Ensure watch object has history data
+4. Test with simple HTML first
+
+### Package Installation Fails
+
+1. Check package name in `EXTRA_PACKAGES` is correct
+2. Verify package exists on PyPI
+3. Check for dependency conflicts
+4. Review startup logs for pip errors
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Processors" icon="microchip" href="/advanced/processors">
+    Learn about built-in processors
+  </Card>
+  <Card title="Custom Fetchers" icon="globe" href="/advanced/custom-fetchers">
+    Create custom content fetchers
+  </Card>
+</CardGroup>

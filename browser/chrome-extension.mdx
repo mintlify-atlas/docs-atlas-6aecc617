@@ -1,0 +1,371 @@
+---
+title: Chrome Extension
+description: Add watches to changedetection.io directly from your browser
+---
+
+The changedetection.io Chrome extension allows you to quickly add the current web page to your changedetection.io instance with a single click, making it easy to start monitoring any page you're currently viewing.
+
+## Features
+
+The Chrome extension provides:
+
+- **One-Click Add** - Add current page to changedetection.io instantly
+- **Automatic Sync** - Connects to your self-hosted or cloud instance
+- **Simple Setup** - Just install and connect with your API key
+- **Browser Integration** - Works seamlessly as you browse
+- **Secure Connection** - Uses API authentication to protect your instance
+
+## Installation
+
+### Step 1: Install from Chrome Web Store
+
+1. Visit the [Chrome Web Store extension page](https://chromewebstore.google.com/detail/changedetectionio-website/kefcfmgmlhmankjmnbijimhofdjekbop)
+2. Click **"Add to Chrome"**
+3. Confirm by clicking **"Add extension"**
+
+The extension icon will appear in your Chrome toolbar.
+
+### Step 2: Connect to Your Instance
+
+After installation, you need to connect the extension to your changedetection.io instance:
+
+1. Click the extension icon in your toolbar
+2. Enter your changedetection.io instance details:
+   - **Instance URL** - Your changedetection.io URL (e.g., `http://localhost:5000` or `https://your-instance.com`)
+   - **API Key** - Your personal API key from changedetection.io
+3. Click **"Sync"** or **"Connect"**
+
+### Getting Your API Key
+
+To obtain your API key from changedetection.io:
+
+1. Open your changedetection.io web interface
+2. Go to **Settings** (gear icon)
+3. Navigate to **API** section
+4. Copy your **API Key**
+5. If no key exists, click **"Generate API Key"**
+
+<Note>
+Keep your API key secure - it provides full access to your changedetection.io instance.
+</Note>
+
+## Using the Extension
+
+### Adding a Watch
+
+1. Navigate to any web page you want to monitor
+2. Click the changedetection.io extension icon in your toolbar
+3. The extension will:
+   - Capture the current page URL
+   - Send it to your changedetection.io instance  
+   - Create a new watch automatically
+4. You'll see a confirmation message
+5. The watch appears in your changedetection.io dashboard
+
+### What Gets Added
+
+When you add a page via the extension:
+
+- **URL** - The current page URL is captured
+- **Title** - Page title is used as watch name (default)
+- **Default Settings** - Uses your instance's default watch settings
+- **Fetcher** - Uses your configured default fetcher (HTTP or browser)
+
+### Customizing the Watch
+
+After adding via extension, you can customize in the web interface:
+
+1. Open changedetection.io dashboard
+2. Find the newly added watch
+3. Click **Edit** to configure:
+   - Check frequency
+   - Filters and selectors
+   - Notifications
+   - Browser type
+   - And more
+
+## Configuration
+
+### Multiple Instances
+
+You can switch between different changedetection.io instances:
+
+1. Click the extension icon
+2. Click settings or configuration
+3. Enter new instance URL and API key
+4. Click **"Sync"** to connect
+
+The extension remembers your last connected instance.
+
+### Self-Hosted vs Cloud
+
+The extension works with:
+
+**Self-Hosted Instances**
+```
+http://localhost:5000
+http://192.168.1.100:5000
+http://changedetection.local:5000
+```
+
+**Cloud Instances**  
+```
+https://your-instance.changedetection.io
+https://custom-domain.com
+```
+
+<Warning>
+For self-hosted instances on localhost, ensure changedetection.io is running and accessible when you try to add watches.
+</Warning>
+
+### HTTPS and Security
+
+For secure connections:
+
+- Use `https://` URLs for cloud instances
+- Self-signed certificates may require browser trust configuration
+- The extension validates SSL certificates by default
+
+## Troubleshooting
+
+### Extension Not Connecting
+
+**Check Instance URL**
+```bash
+# Verify changedetection.io is accessible
+curl http://localhost:5000/api/v1/watch
+
+# Or use browser
+open http://localhost:5000
+```
+
+**Verify API Key**
+1. Check API key is copied correctly (no extra spaces)
+2. Regenerate API key in Settings if needed
+3. Ensure API access is enabled in changedetection.io
+
+**Network Issues**
+- If using localhost, ensure changedetection.io is running
+- Check firewall isn't blocking the connection
+- For remote instances, verify URL is accessible from your browser
+
+### "Failed to Add Watch" Error
+
+**Common causes:**
+
+1. **Invalid API Key**
+   - Solution: Regenerate and re-enter API key
+
+2. **Instance Not Accessible**
+   - Solution: Verify instance URL is correct and reachable
+
+3. **API Disabled**
+   - Solution: Check API is enabled in changedetection.io settings
+
+4. **CORS Issues**
+   - Solution: Ensure changedetection.io allows extension origin
+
+### Extension Icon Not Appearing
+
+1. Check extension is installed: `chrome://extensions/`
+2. Ensure extension is enabled
+3. Pin extension to toolbar:
+   - Click puzzle piece icon in Chrome
+   - Click pin icon next to changedetection.io extension
+
+### Localhost Connection Fails
+
+**For Docker users:**
+
+If changedetection.io runs in Docker, localhost from browser may not reach container:
+
+```bash
+# Option 1: Use host IP address
+http://192.168.1.100:5000
+
+# Option 2: Use Docker host
+http://host.docker.internal:5000  # Mac/Windows
+http://172.17.0.1:5000            # Linux
+
+# Option 3: Expose on 0.0.0.0
+docker run -p 0.0.0.0:5000:5000 ...
+```
+
+## Limitations
+
+The Chrome extension has some limitations:
+
+### Browser Compatibility
+
+- **Chrome/Chromium** - Full support
+- **Edge** - Should work (Chromium-based)
+- **Brave** - Should work (Chromium-based)
+- **Firefox** - Not currently supported
+- **Safari** - Not currently supported
+
+### Feature Limitations
+
+**Cannot Configure:**
+- Specific filters or selectors
+- Check frequency  
+- Notification settings
+- Browser type (Playwright vs HTTP)
+- Custom headers or authentication
+
+These must be configured after adding the watch via the web interface.
+
+**Cannot:**
+- Edit existing watches
+- Delete watches
+- View watch status
+- Trigger immediate checks
+- View change history
+
+Use the main changedetection.io web interface for these operations.
+
+### URL Limitations
+
+**Supported:**
+- `http://` and `https://` URLs
+- Public websites
+- Authentication via URL credentials
+- Dynamic URLs with parameters
+
+**Not Supported:**
+- `file://` local files
+- `chrome://` internal pages
+- `chrome-extension://` extension pages
+- Password-protected sites (add via web interface with Browser Steps)
+
+## Privacy and Security
+
+### What the Extension Accesses
+
+- **Current Tab URL** - Only when you click to add a watch
+- **Current Tab Title** - Only when you click to add a watch
+- **Your API Key** - Stored locally in extension settings
+- **Instance URL** - Stored locally in extension settings
+
+### What the Extension Does NOT Do
+
+- Does not track your browsing history
+- Does not read page content
+- Does not send data to third parties
+- Does not run on every page automatically
+- Only activates when you click the icon
+
+### Data Transmission
+
+When you add a watch:
+
+1. Extension reads current URL and title
+2. Sends to YOUR changedetection.io instance via API
+3. Uses YOUR API key for authentication
+4. No data sent to changedetection.io developers or third parties
+
+<Note>
+The extension is open source. You can review the code at the [GitHub repository](https://github.com/dgtlmoon/changedetection.io-browser-extension).
+</Note>
+
+## Advanced Usage
+
+### Keyboard Shortcuts
+
+You can set up keyboard shortcuts for the extension:
+
+1. Go to `chrome://extensions/shortcuts`
+2. Find "changedetection.io Website Monitor"
+3. Click in the shortcut field
+4. Press your desired key combination (e.g., `Ctrl+Shift+D`)
+5. Now press that combination to add current page
+
+### Bookmarklet Alternative
+
+If you can't install extensions, use a bookmarklet:
+
+```javascript
+javascript:(function(){
+  var url='http://localhost:5000/api/v1/watch';
+  var apiKey='your-api-key-here';
+  fetch(url,{
+    method:'POST',
+    headers:{
+      'X-API-KEY':apiKey,
+      'Content-Type':'application/json'
+    },
+    body:JSON.stringify({
+      url:window.location.href,
+      title:document.title
+    })
+  }).then(r=>alert(r.ok?'Added!':'Failed'));
+})();
+```
+
+Replace `http://localhost:5000` and `your-api-key-here`, then save as a bookmark.
+
+### API Integration
+
+The extension uses the changedetection.io REST API. You can replicate its functionality:
+
+```bash
+curl -X POST 'http://localhost:5000/api/v1/watch' \
+  -H 'X-API-KEY: your-api-key' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "url": "https://example.com",
+    "title": "Example Watch"
+  }'
+```
+
+See the [API Documentation](/api/introduction) for more details.
+
+## Source Code
+
+The extension is open source and available on GitHub:
+
+- **Repository**: [github.com/dgtlmoon/changedetection.io-browser-extension](https://github.com/dgtlmoon/changedetection.io-browser-extension)
+- **Issues**: Report bugs or request features on GitHub
+- **Contributions**: Pull requests welcome
+
+## Frequently Asked Questions
+
+### Can I use this with the paid subscription?
+
+Yes! The extension works with both self-hosted and the official changedetection.io subscription service.
+
+### Does this work with other browsers?
+
+Currently only Chrome and Chromium-based browsers (Edge, Brave) are supported. Firefox support may come in the future.
+
+### Can I add watches in bulk?
+
+No, the extension adds one watch at a time. For bulk imports, use the Excel import feature in the web interface.
+
+### Does it support Browser Steps?
+
+No, the extension creates basic watches. Configure Browser Steps afterward in the web interface.
+
+### Can I customize default settings for extension-added watches?
+
+Yes, set your desired defaults in changedetection.io Settings. The extension uses these defaults when creating watches.
+
+### Is my API key safe?
+
+Your API key is stored locally in your browser's extension storage, not transmitted anywhere except to your configured changedetection.io instance.
+
+### Can I install it manually?
+
+Yes, download from GitHub and install in developer mode:
+
+1. Download the extension code from GitHub
+2. Go to `chrome://extensions/`
+3. Enable "Developer mode"
+4. Click "Load unpacked"
+5. Select the extension folder
+
+## Related Documentation
+
+- [API Documentation](/api/introduction) - Complete API reference for automation
+- [Getting Started](/quickstart) - Set up your first watches
+- [Playwright](/browser/playwright) - Configure browser-based monitoring
+- [Importing Watches](/configuration/importing-watches) - Bulk import watches via Excel

@@ -1,0 +1,276 @@
+---
+title: "Docker Installation"
+description: "Install changedetection.io using Docker standalone"
+---
+
+Run changedetection.io as a standalone Docker container. This is the simplest installation method for single-server deployments.
+
+## Quick Start
+
+<Steps>
+  <Step title="Pull the Docker image">
+    Download the latest stable release:
+    ```bash
+    docker pull ghcr.io/dgtlmoon/changedetection.io
+    ```
+    
+    <Note>
+      Use `:latest` for the stable release or `:dev` for the bleeding edge master branch.
+    </Note>
+  </Step>
+
+  <Step title="Run the container">
+    Start changedetection.io with basic configuration:
+    ```bash
+    docker run -d --restart always \
+      -p "127.0.0.1:5000:5000" \
+      -v datastore-volume:/datastore \
+      --name changedetection.io \
+      ghcr.io/dgtlmoon/changedetection.io
+    ```
+  </Step>
+
+  <Step title="Access the web interface">
+    Open your browser and navigate to:
+    ```
+    http://127.0.0.1:5000
+    ```
+  </Step>
+</Steps>
+
+## Port Configuration
+
+The default port is `5000`. You can customize the port mapping:
+
+<CodeGroup>
+```bash Localhost Only (Recommended)
+docker run -d --restart always \
+  -p "127.0.0.1:5000:5000" \
+  -v datastore-volume:/datastore \
+  --name changedetection.io \
+  ghcr.io/dgtlmoon/changedetection.io
+```
+
+```bash All Interfaces
+docker run -d --restart always \
+  -p "5000:5000" \
+  -v datastore-volume:/datastore \
+  --name changedetection.io \
+  ghcr.io/dgtlmoon/changedetection.io
+```
+
+```bash Custom Port
+docker run -d --restart always \
+  -p "127.0.0.1:8080:5000" \
+  -v datastore-volume:/datastore \
+  --name changedetection.io \
+  ghcr.io/dgtlmoon/changedetection.io
+```
+
+```bash Mac Users (Avoid Airplay Conflict)
+# Use port 5050 to avoid conflicts with Airplay
+docker run -d --restart always \
+  -p "127.0.0.1:5050:5000" \
+  -v datastore-volume:/datastore \
+  --name changedetection.io \
+  ghcr.io/dgtlmoon/changedetection.io
+```
+</CodeGroup>
+
+<Warning>
+  Mac users should avoid port 5000 as it conflicts with Airplay services. Use port 5050 instead.
+</Warning>
+
+## Volume Configuration
+
+Your data is stored in the `/datastore` directory. Choose between a named volume or bind mount:
+
+<CodeGroup>
+```bash Named Volume (Recommended)
+docker run -d --restart always \
+  -p "127.0.0.1:5000:5000" \
+  -v datastore-volume:/datastore \
+  --name changedetection.io \
+  ghcr.io/dgtlmoon/changedetection.io
+```
+
+```bash Bind Mount
+docker run -d --restart always \
+  -p "127.0.0.1:5000:5000" \
+  -v /path/on/host:/datastore \
+  --name changedetection.io \
+  ghcr.io/dgtlmoon/changedetection.io
+```
+</CodeGroup>
+
+## Environment Variables
+
+Customize your installation with environment variables:
+
+```bash
+docker run -d --restart always \
+  -p "127.0.0.1:5000:5000" \
+  -v datastore-volume:/datastore \
+  -e PORT=5000 \
+  -e LOGGER_LEVEL=INFO \
+  -e BASE_URL=https://example.com \
+  -e FETCH_WORKERS=10 \
+  --name changedetection.io \
+  ghcr.io/dgtlmoon/changedetection.io
+```
+
+### Common Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PORT` | `5000` | Web interface listening port |
+| `LOGGER_LEVEL` | `DEBUG` | Log level: TRACE, DEBUG, INFO, SUCCESS, WARNING, ERROR, CRITICAL |
+| `BASE_URL` | - | Base URL for notifications |
+| `FETCH_WORKERS` | `10` | Number of parallel fetchers |
+| `MINIMUM_SECONDS_RECHECK_TIME` | `3` | Minimum recheck interval in seconds |
+| `TZ` | - | Timezone (e.g., `America/Los_Angeles`) |
+| `DISABLE_VERSION_CHECK` | `false` | Disable telemetry |
+
+### Proxy Configuration
+
+```bash
+docker run -d --restart always \
+  -p "127.0.0.1:5000:5000" \
+  -v datastore-volume:/datastore \
+  -e HTTP_PROXY=socks5h://10.10.1.10:1080 \
+  -e HTTPS_PROXY=socks5h://10.10.1.10:1080 \
+  -e NO_PROXY="localhost,192.168.0.0/24" \
+  --name changedetection.io \
+  ghcr.io/dgtlmoon/changedetection.io
+```
+
+### SSL/HTTPS Configuration
+
+To enable HTTPS, mount certificate files:
+
+```bash
+docker run -d --restart always \
+  -p "127.0.0.1:5000:5000" \
+  -v datastore-volume:/datastore \
+  -v ./cert.pem:/app/cert.pem \
+  -v ./privkey.pem:/app/privkey.pem \
+  -e SSL_CERT_FILE=cert.pem \
+  -e SSL_PRIVKEY_FILE=privkey.pem \
+  --name changedetection.io \
+  ghcr.io/dgtlmoon/changedetection.io
+```
+
+### Plugin Installation
+
+Install additional Python packages using the `EXTRA_PACKAGES` variable:
+
+```bash
+docker run -d --restart always \
+  -p "127.0.0.1:5000:5000" \
+  -v datastore-volume:/datastore \
+  -e EXTRA_PACKAGES="changedetection.io-osint-processor another-plugin" \
+  --name changedetection.io \
+  ghcr.io/dgtlmoon/changedetection.io
+```
+
+<Note>
+  Packages are installed on first run and cached. See [plugins documentation](https://changedetection.io/plugins) for available plugins.
+</Note>
+
+## Updating
+
+<Steps>
+  <Step title="Pull the latest image">
+    ```bash
+    docker pull ghcr.io/dgtlmoon/changedetection.io
+    ```
+  </Step>
+
+  <Step title="Stop and remove the old container">
+    ```bash
+    docker kill $(docker ps -a -f name=changedetection.io -q)
+    docker rm $(docker ps -a -f name=changedetection.io -q)
+    ```
+  </Step>
+
+  <Step title="Start the new container">
+    ```bash
+    docker run -d --restart always \
+      -p "127.0.0.1:5000:5000" \
+      -v datastore-volume:/datastore \
+      --name changedetection.io \
+      ghcr.io/dgtlmoon/changedetection.io
+    ```
+  </Step>
+</Steps>
+
+<Note>
+  Your data persists in the volume, so no data is lost during updates.
+</Note>
+
+## Alternative Image Registry
+
+You can also pull from Docker Hub:
+
+```bash
+docker pull dgtlmoon/changedetection.io
+docker run -d --restart always \
+  -p "127.0.0.1:5000:5000" \
+  -v datastore-volume:/datastore \
+  --name changedetection.io \
+  dgtlmoon/changedetection.io
+```
+
+## Troubleshooting
+
+### Container won't start
+
+Check the logs:
+```bash
+docker logs changedetection.io
+```
+
+### Permission issues with bind mounts
+
+Ensure the host directory has correct permissions:
+```bash
+sudo chown -R 1000:1000 /path/on/host
+```
+
+### Port already in use
+
+Either stop the conflicting service or use a different port:
+```bash
+docker run -d --restart always \
+  -p "127.0.0.1:8080:5000" \
+  -v datastore-volume:/datastore \
+  --name changedetection.io \
+  ghcr.io/dgtlmoon/changedetection.io
+```
+
+### Can't access from other machines
+
+Change the binding from `127.0.0.1` to `0.0.0.0` or your server's IP:
+```bash
+docker run -d --restart always \
+  -p "0.0.0.0:5000:5000" \
+  -v datastore-volume:/datastore \
+  --name changedetection.io \
+  ghcr.io/dgtlmoon/changedetection.io
+```
+
+<Warning>
+  Binding to `0.0.0.0` exposes the service to all network interfaces. Use a reverse proxy with authentication for production deployments.
+</Warning>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Docker Compose" icon="layer-group" href="/installation/docker-compose">
+    Set up with browser automation support
+  </Card>
+  
+  <Card title="Configuration" icon="gear" href="/configuration/environment-variables">
+    Configure advanced features
+  </Card>
+</CardGroup>

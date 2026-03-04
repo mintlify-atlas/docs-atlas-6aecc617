@@ -1,0 +1,189 @@
+---
+title: Introduction to Changedetection.io
+description: Monitor websites for changes and get instant alerts when content updates
+---
+
+## What is Changedetection.io?
+
+Changedetection.io is a powerful, self-hosted web monitoring tool that automatically detects changes on websites and sends you instant notifications. Whether you're tracking price drops, monitoring competitor updates, or waiting for job postings, changedetection.io keeps you informed in real-time.
+
+<Note>
+  Changedetection.io is available both as a **self-hosted solution** (free and open source) and as a **managed service** at $8.99/month — half the price of comparable services.
+</Note>
+
+## Key Problems Solved
+
+<CardGroup cols={2}>
+  <Card title="Price Tracking" icon="dollar-sign">
+    Monitor product prices and get notified when they drop below your target amount
+  </Card>
+  <Card title="Stock Alerts" icon="box">
+    Know instantly when out-of-stock items become available again
+  </Card>
+  <Card title="Content Updates" icon="newspaper">
+    Track government announcements, news updates, and regulatory changes
+  </Card>
+  <Card title="Competitive Intelligence" icon="magnifying-glass">
+    Monitor competitor websites, job postings, and industry developments
+  </Card>
+</CardGroup>
+
+## Core Features
+
+### Visual Selector Tool
+
+Target specific parts of web pages with precision using the Visual Selector. Click and select exactly what you want to monitor — no coding required.
+
+<Tip>
+  The Visual Selector requires a Playwright content fetcher connection (included in the managed service or configurable in self-hosted deployments).
+</Tip>
+
+### Browser Automation
+
+Perform interactive browser steps before monitoring:
+- Fill in text boxes and forms
+- Click buttons and navigate menus
+- Accept cookie prompts
+- Log into password-protected pages
+- Refine searches and add items to carts
+
+### Advanced Content Filtering
+
+<CardGroup cols={2}>
+  <Card title="XPath & CSS Selectors" icon="code">
+    Use XPath 1.0/2.0 or CSS selectors to extract specific content
+  </Card>
+  <Card title="JSON Monitoring" icon="brackets-curly">
+    Monitor JSON APIs with JSONPath or jq filtering
+  </Card>
+  <Card title="PDF Tracking" icon="file-pdf">
+    Detect text changes in PDF documents
+  </Card>
+  <Card title="Regex Support" icon="wand-magic-sparkles">
+    Trigger on text patterns using regular expressions
+  </Card>
+</CardGroup>
+
+### Flexible Notifications
+
+Get alerted through 80+ notification services powered by [Apprise](https://github.com/caronc/apprise):
+
+- **Messaging**: Discord, Slack, Telegram, Microsoft Teams
+- **Email**: SMTP, Office365, Gmail
+- **Custom**: Webhooks, JSON APIs, custom integrations
+- **System**: Syslog, desktop notifications
+
+All notifications support Jinja2 templating for customized content.
+
+### Intelligent Scheduling
+
+- Schedule checks in any timezone
+- Limit monitoring to specific days and times
+- Quick presets for business hours or weekends
+- Configurable check intervals per watch
+
+### Conditional Monitoring
+
+Only trigger notifications when specific conditions are met:
+- Price above or below threshold
+- Keywords present or absent
+- Percentage changes
+- Custom logic combinations
+
+## Common Use Cases
+
+<AccordionGroup>
+  <Accordion title="E-commerce & Shopping">
+    - Product price tracking and drop alerts
+    - Restock notifications for sold-out items
+    - Discount and sale monitoring
+    - Special deal announcements
+  </Accordion>
+  
+  <Accordion title="Professional & Business">
+    - Job posting alerts on career pages
+    - Competitor website monitoring
+    - Regulatory compliance updates (RegTech)
+    - Security advisories and software releases
+  </Accordion>
+  
+  <Accordion title="Research & Intelligence">
+    - Government department updates
+    - Legal document changes
+    - API response monitoring
+    - Social media search results
+  </Accordion>
+  
+  <Accordion title="Real Estate & Collectibles">
+    - Property listing changes
+    - Discogs restock alerts
+    - Pokémon card availability
+    - Limited edition releases
+  </Accordion>
+</AccordionGroup>
+
+## Architecture Overview
+
+Changedetection.io operates with a modular architecture:
+
+### Content Fetchers
+- **HTML Requests**: Fast, lightweight fetcher for static pages
+- **Playwright**: Full Chrome browser with JavaScript support
+- **Selenium WebDriver**: Alternative browser automation (deprecated)
+
+### Processors
+- **text_json_diff**: Traditional text and JSON comparison (default)
+- **restock_diff**: Specialized for product availability and pricing
+- **image_ssim_diff**: Visual comparison using image similarity
+
+### Data Storage
+All data is stored locally in a file-based datastore (default) or can be configured for other backends.
+
+<Warning>
+  If you're monitoring sensitive URLs, use the self-hosted version to maintain complete data privacy. With changedetection.io, **you** control your data, not third parties.
+</Warning>
+
+## Browser Extension
+
+The [Chrome extension](https://chromewebstore.google.com/detail/changedetectionio-website/kefcfmgmlhmankjmnbijimhofdjekbop) lets you add the current webpage to your changedetection.io instance with a single click. Simply install, sync with your instance, and start monitoring.
+
+## API Support
+
+Full REST API for programmatic management:
+- Create, update, and delete watches
+- Manage tags and notifications
+- Import and export configurations
+- Query system information
+
+Explore the [Interactive API Documentation](https://changedetection.io/docs/api_v1/index.html) or download the [OpenAPI Specification](/api/introduction).
+
+## Privacy & Security
+
+✓ **Self-hosted**: Complete control over your data  
+✓ **No tracking**: Your monitored URLs stay private  
+✓ **Local storage**: All data remains on your infrastructure  
+✓ **Proxy support**: Route requests through proxies for anonymity  
+✓ **Open source**: Audit the code yourself (Apache 2.0 license)
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Get your first monitor running in 5 minutes
+  </Card>
+  <Card title="Installation" icon="download" href="/installation/docker">
+    Self-host with Docker, pip, or Docker Compose
+  </Card>
+  <Card title="Visual Selector" icon="mouse-pointer" href="/features/visual-selector">
+    Learn to target specific page elements
+  </Card>
+  <Card title="Notifications" icon="bell" href="/features/notifications">
+    Configure alerts for your preferred channels
+  </Card>
+</CardGroup>
+
+---
+
+<Note>
+  **Need help?** Check out the [tutorials and how-to guides](https://changedetection.io/tutorials) or visit the [GitHub repository](https://github.com/dgtlmoon/changedetection.io) for community support.
+</Note>

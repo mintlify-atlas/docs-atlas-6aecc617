@@ -1,0 +1,759 @@
+---
+title: Notifications
+description: Get instant alerts via Discord, Email, Slack, Telegram, Webhooks, and 100+ services
+---
+
+# Notifications
+
+changedetection.io integrates with over 100 notification services through the powerful [Apprise library](https://github.com/caronc/apprise). Get instant alerts when websites change via your preferred communication channel - from Discord and Slack to SMS and custom webhooks.
+
+<img src="https://raw.githubusercontent.com/dgtlmoon/changedetection.io/master/docs/screenshot-notifications.png" alt="Notification configuration" />
+
+## Supported Notification Services
+
+changedetection.io supports a massive range of notification platforms:
+
+<CardGroup cols={3}>
+  <Card title="Discord" icon="discord">
+    Webhooks and mentions
+  </Card>
+  <Card title="Slack" icon="slack">
+    Channels and DMs
+  </Card>
+  <Card title="Telegram" icon="telegram">
+    Bots and channels
+  </Card>
+  <Card title="Email" icon="envelope">
+    SMTP, Gmail, Office365
+  </Card>
+  <Card title="Microsoft Teams" icon="microsoft">
+    Webhooks and channels
+  </Card>
+  <Card title="Webhooks" icon="webhook">
+    JSON, POST, custom APIs
+  </Card>
+  <Card title="Pushover" icon="mobile">
+    Push notifications
+  </Card>
+  <Card title="Gotify" icon="bell">
+    Self-hosted push
+  </Card>
+  <Card title="Matrix" icon="comments">
+    Decentralized chat
+  </Card>
+</CardGroup>
+
+<Tip>
+  **Plus 90+ more services!**
+  
+  Including: Pushbullet, Rocket.Chat, Mattermost, Gitter, IFTTT, Zapier webhooks, AWS SNS, Google Chat, Signal, WhatsApp Business, and many more.
+  
+  [See the complete list →](https://github.com/caronc/apprise#popular-notification-services)
+</Tip>
+
+## Setting Up Notifications
+
+Notifications can be configured at two levels:
+
+### Global Notifications (All Watches)
+
+Set up default notifications that apply to all watches:
+
+<Steps>
+  <Step title="Navigate to Settings">
+    Click **Settings** in the top navigation
+  </Step>
+  
+  <Step title="Go to Notifications Section">
+    Scroll to the **Notification URL List** field
+  </Step>
+  
+  <Step title="Add Notification URLs">
+    Enter one or more notification URLs (one per line)
+  </Step>
+  
+  <Step title="Configure Format and Content">
+    Set:
+    - **Notification Title** (default: `ChangeDetection.io Notification - {{watch_url}}`)
+    - **Notification Body** (default: `{{watch_url}} had a change.`)
+    - **Notification Format** (HTML Color, Plain Text, Markdown, etc.)
+  </Step>
+  
+  <Step title="Save">
+    Click **Save** to apply global notification settings
+  </Step>
+</Steps>
+
+### Per-Watch Notifications
+
+Override notifications for specific watches:
+
+<Steps>
+  <Step title="Edit Watch">
+    Click **Edit** on any watch
+  </Step>
+  
+  <Step title="Find Notification Settings">
+    Scroll to the **Notifications** section
+  </Step>
+  
+  <Step title="Add Watch-Specific URLs">
+    Enter notification URLs specific to this watch
+  </Step>
+  
+  <Step title="Customize Message">
+    Optionally customize title, body, and format for this watch
+  </Step>
+</Steps>
+
+<Info>
+  **Notification Priority**
+  
+  - If a watch has **watch-specific notifications**, only those are sent
+  - If a watch has **no specific notifications**, global notifications are used
+  - If neither is set, no notifications are sent
+</Info>
+
+## Notification URL Formats
+
+Each service requires a specific URL format. Here are the most popular:
+
+### Discord
+
+```
+discord://webhook_id/webhook_token
+```
+
+**How to get webhook URL:**
+1. Go to Discord Server Settings → Integrations → Webhooks
+2. Create or copy an existing webhook
+3. Example webhook: `https://discord.com/api/webhooks/123456/abcdef`
+4. Convert to: `discord://123456/abcdef`
+
+<Accordion title="Discord with @mentions and formatting">
+```
+discord://webhook_id/webhook_token?tts=yes&avatar=yes&footer=yes&footer_logo=yes&author=changedetection.io
+```
+
+**Mention users:**
+```
+discord://webhook_id/webhook_token
+```
+
+Then in notification body:
+```
+<@USER_ID> The website changed!
+```
+</Accordion>
+
+### Slack
+
+```
+slack://tokenA/tokenB/tokenC
+```
+
+**How to get tokens:**
+1. Create a Slack App: https://api.slack.com/apps
+2. Enable Incoming Webhooks
+3. Add to workspace and select channel
+4. Copy webhook URL: `https://hooks.slack.com/services/T00/B00/XXXX`
+5. Tokens are the three parts after `/services/`
+
+**Alternative (simpler):**
+```
+slack://webhook_token
+```
+
+Use the full webhook URL as the token.
+
+### Telegram
+
+```
+tgram://bot_token/chat_id
+```
+
+**How to setup:**
+<Steps>
+  <Step title="Create Bot">
+    Message [@BotFather](https://t.me/botfather) on Telegram
+    
+    Send: `/newbot`
+    
+    Follow prompts to get your `bot_token`
+  </Step>
+  
+  <Step title="Get Chat ID">
+    Message [@RawDataBot](https://t.me/rawdatabot)
+    
+    It will reply with your `chat_id`
+  </Step>
+  
+  <Step title="Construct URL">
+    ```
+    tgram://bot_token/chat_id
+    ```
+  </Step>
+</Steps>
+
+**For channels:**
+```
+tgram://bot_token/@channel_name
+```
+
+### Email (SMTP)
+
+```
+mailto://user:password@smtp.example.com?from=sender@example.com&to=recipient@example.com
+```
+
+**Gmail example:**
+```
+mailto://username:app_password@gmail.com?to=recipient@example.com
+```
+
+<Warning>
+  **Gmail requires App Password**
+  
+  1. Enable 2-Factor Authentication on your Google account
+  2. Generate an App Password: https://myaccount.google.com/apppasswords
+  3. Use the app password (not your regular password) in the URL
+</Warning>
+
+**Office 365:**
+```
+o365://TenantID:AccountEmail/ClientID/ClientSecret/TargetEmail
+```
+
+### Microsoft Teams
+
+```
+msteams://TokenA/TokenB/TokenC/
+```
+
+**How to get webhook:**
+1. In Teams channel → ⋯ → Connectors
+2. Configure "Incoming Webhook"
+3. Copy webhook URL: `https://outlook.office.com/webhook/...`
+4. Extract three token parts from URL
+
+### Webhooks (Custom JSON APIs)
+
+```
+json://your-api.com/endpoint
+```
+
+**POST request with JSON body:**
+```
+json://your-api.com/webhook
+```
+
+Sends:
+```json
+{
+  "title": "Notification title",
+  "body": "Notification body",
+  "type": "info"
+}
+```
+
+**Custom headers:**
+```
+json://your-api.com/endpoint?:Authorization=Bearer token123&:Content-Type=application/json
+```
+
+### Pushover
+
+```
+pover://user_key@app_token
+```
+
+**Get credentials:**
+1. Sign up at https://pushover.net
+2. Create an application to get `app_token`
+3. Find your `user_key` in your account
+
+### Gotify
+
+```
+gotify://hostname/token
+```
+
+Example:
+```
+gotify://gotify.example.com/AbCdEf123456
+```
+
+## Customizing Notification Content
+
+Notifications support **Jinja2 templating** for dynamic content.
+
+### Available Variables
+
+| Variable | Description | Example |
+|----------|-------------|----------|
+| `{{watch_url}}` | The monitored URL | `https://example.com/page` |
+| `{{watch_title}}` | Watch title (if set) | `"My Product Page"` |
+| `{{watch_uuid}}` | Unique watch ID | `abc123...` |
+| `{{diff}}` | Content that changed | `Added line: Price: $50` |
+| `{{diff_url}}` | Link to diff/history page | `https://your-instance.com/diff/abc123` |
+| `{{preview_url}}` | Link to current snapshot | `https://your-instance.com/preview/abc123` |
+| `{{current_snapshot}}` | Current page content | Full text content |
+| `{{triggered_text}}` | Text that triggered the alert | (if using trigger filters) |
+
+#### Restock-Specific Variables
+
+For watches using restock monitoring:
+
+| Variable | Description | Example |
+|----------|-------------|----------|
+| `{{current_price}}` | Current price | `$299.99` |
+| `{{original_price}}` | Original/first price | `$349.99` |
+| `{{price_currency}}` | Currency code | `USD` |
+| `{{in_stock}}` | Stock status | `true` / `false` |
+
+### Example Notification Templates
+
+#### Basic Alert
+
+```jinja2
+Title: Change detected on {{watch_url}}
+
+Body:
+The website {{watch_url}} has changed!
+
+View changes: {{diff_url}}
+```
+
+#### Price Drop Alert
+
+```jinja2
+Title: 🎉 Price Drop Alert!
+
+Body:
+The price on {{watch_url}} dropped!
+
+Was: {{original_price}} {{price_currency}}
+Now: {{current_price}} {{price_currency}}
+
+Check it out: {{watch_url}}
+```
+
+#### Detailed Change Summary
+
+```jinja2
+Title: Update on "{{watch_title}}"
+
+Body:
+Changes detected on {{watch_title}}:
+
+{{diff}}
+
+---
+View full comparison: {{diff_url}}
+Current snapshot: {{preview_url}}
+```
+
+#### Conditional Content
+
+```jinja2
+Title: Stock Update
+
+Body:
+{% if in_stock %}
+✅ Back in stock at {{current_price}}!
+{% else %}
+❌ Out of stock
+{% endif %}
+
+{{watch_url}}
+```
+
+## Notification Formats
+
+Choose how notifications are formatted:
+
+<Tabs>
+  <Tab title="HTML Color (Default)">
+    **Rich formatting with colors**
+    
+    - Supports HTML tags
+    - Color-coded diffs (green for additions, red for deletions)
+    - Works with: Discord, Slack, Email, Teams
+    
+    **Example output:**
+    <span style="color: green;">+ New line added</span>
+    <span style="color: red;">- Old line removed</span>
+  </Tab>
+  
+  <Tab title="Plain Text">
+    **Simple text only**
+    
+    - No formatting or colors
+    - Works everywhere (SMS, basic webhooks)
+    - Best for character-limited services
+    
+    **Example output:**
+    ```
+    + New line added
+    - Old line removed
+    ```
+  </Tab>
+  
+  <Tab title="Markdown to HTML">
+    **Markdown converted to HTML**
+    
+    - Write in Markdown syntax
+    - Converted to HTML for rich display
+    - Supports **bold**, *italic*, links, etc.
+    
+    **Example:**
+    ```markdown
+    **Price changed** from $50 to $40!
+    [View product](https://example.com)
+    ```
+  </Tab>
+  
+  <Tab title="HTML">
+    **Raw HTML**
+    
+    - Full HTML control
+    - Requires HTML-compatible services
+    - Best for custom email formatting
+    
+    **Example:**
+    ```html
+    <h2>Price Alert</h2>
+    <p>Price: <strong>$40</strong></p>
+    ```
+  </Tab>
+</Tabs>
+
+<Note>
+  **Format compatibility**
+  
+  Not all services support all formats:
+  - **Telegram/Discord:** Don't support HTML Color - use Plain Text or Markdown
+  - **Email:** Fully supports HTML and HTML Color
+  - **Slack/Teams:** Support HTML Color and Markdown
+  - **SMS/Pushover:** Use Plain Text only
+</Note>
+
+## Advanced Features
+
+### Multiple Notification Endpoints
+
+Send to multiple services simultaneously:
+
+```
+discord://webhook_id/webhook_token
+slack://tokenA/tokenB/tokenC  
+mailto://user:pass@gmail.com?to=you@example.com
+```
+
+Enter one URL per line. All will receive notifications.
+
+### Attach Screenshots
+
+Include a screenshot of the changed page:
+
+<Steps>
+  <Step title="Enable in Watch Settings">
+    Edit watch → Check **"Attach screenshot to notification (where possible)"**
+  </Step>
+  
+  <Step title="Requires Browser Fetcher">
+    Set fetch method to Chrome/Playwright
+  </Step>
+  
+  <Step title="Supported Services">
+    Works with: Discord, Slack, Telegram, Email (as attachment)
+  </Step>
+</Steps>
+
+### Mute Notifications
+
+Temporarily disable notifications for a watch:
+
+1. Edit watch
+2. Set **Notifications** to **Muted**
+3. Watch still runs, but sends no alerts
+
+<Tip>
+  **Use mute for testing**
+  
+  Mute notifications while configuring filters to avoid spam during testing.
+</Tip>
+
+### Base URL Override
+
+Set a custom base URL for links in notifications:
+
+**Settings → Application Settings → Notification base URL override**
+
+```
+https://changedetection.example.com
+```
+
+Useful when:
+- Running behind a reverse proxy
+- Using a custom domain
+- Accessing via Tailscale or VPN
+
+Links like `{{diff_url}}` will use this base.
+
+## Testing Notifications
+
+<Steps>
+  <Step title="Trigger a Test">
+    After configuring notifications, force a check:
+    
+    Click **Check now** on a watch
+  </Step>
+  
+  <Step title="Force a Change">
+    Temporarily modify the watch URL or filters to trigger a detection
+  </Step>
+  
+  <Step title="Check Notification Log">
+    Watch dashboard shows **Last notification error** if delivery failed
+  </Step>
+  
+  <Step title="Verify Delivery">
+    Check your notification service (Discord channel, email inbox, etc.)
+  </Step>
+</Steps>
+
+<Warning>
+  **Common test mistake**
+  
+  If you click "Check now" immediately after creating a watch, it may not send a notification because there's no previous snapshot to compare against.
+  
+  **Solution:** Click "Check now" twice - first check creates baseline, second check detects "no change" or triggers if content changed.
+</Warning>
+
+## Troubleshooting
+
+### Not Receiving Notifications
+
+<AccordionGroup>
+  <Accordion title="Check notification URL format">
+    Verify your URL matches the service's format exactly.
+    
+    Common mistakes:
+    - Missing `://` separator
+    - Incorrect token order
+    - Extra spaces or line breaks
+    
+    **Test:** Copy examples from Apprise documentation and modify tokens only.
+  </Accordion>
+  
+  <Accordion title="Verify watch detected a change">
+    Notifications only send when a change is detected.
+    
+    **Check:**
+    - View watch history - is there a new snapshot?
+    - Check "Last check" time - did it run recently?
+    - Look for "Last notification error" message
+  </Accordion>
+  
+  <Accordion title="Service-specific issues">
+    **Discord:** Webhook deleted or channel removed?
+    
+    **Telegram:** Bot not started or chat_id incorrect?
+    
+    **Email:** Check spam folder, verify SMTP credentials
+    
+    **Slack:** App permissions or token expired?
+  </Accordion>
+  
+  <Accordion title="Check notification error log">
+    The watch dashboard shows the last notification error.
+    
+    Common errors:
+    - `401 Unauthorized`: Invalid credentials/token
+    - `404 Not Found`: Webhook URL incorrect
+    - `Connection refused`: Service unreachable
+  </Accordion>
+</AccordionGroup>
+
+### Notifications Contain Wrong Content
+
+**Problem:** `{{diff}}` or variables show empty or incorrect data
+
+**Solutions:**
+- Ensure the watch has at least 2 snapshots (baseline + change)
+- Check if filters are removing all content
+- Verify Jinja2 syntax: `{{variable}}` not `{variable}`
+
+### Duplicate Notifications
+
+**Causes:**
+- Both global and per-watch notifications configured
+- Multiple notification URLs pointing to same destination
+- Watch configured in multiple tags with notification overrides
+
+**Solution:** Consolidate notifications to one level (global OR per-watch).
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use Global Notifications for Defaults">
+    Set up a default notification channel (e.g., your main Discord server) in global settings.
+    
+    Override with per-watch notifications only for special cases.
+  </Accordion>
+  
+  <Accordion title="Customize Titles for Clarity">
+    Generic titles make it hard to identify which watch triggered.
+    
+    **Good:** `Price drop on {{watch_title}}: {{current_price}}`
+    
+    **Bad:** `ChangeDetection.io Notification`
+  </Accordion>
+  
+  <Accordion title="Include Action Links">
+    Always include `{{diff_url}}` or `{{watch_url}}` so you can quickly act on notifications.
+    
+    ```jinja2
+    {{watch_url}} changed!
+    
+    View changes: {{diff_url}}
+    ```
+  </Accordion>
+  
+  <Accordion title="Test Before Deploying">
+    Test notification delivery with a dummy watch before setting up critical monitoring.
+    
+    Create a test watch on a site you control, make a change, verify notification arrives.
+  </Accordion>
+  
+  <Accordion title="Use Mute During Setup">
+    Mute notifications while configuring complex filters to avoid notification spam.
+  </Accordion>
+</AccordionGroup>
+
+## Security Considerations
+
+<Warning>
+  **Notification URLs contain secrets**
+  
+  - Webhook URLs and tokens are credentials
+  - Don't share screenshots of notification settings
+  - Rotate tokens if exposed
+  - Use environment variables or external secret management if possible
+</Warning>
+
+### Safe Notification Practices
+
+1. **Limit webhook permissions** - Create service-specific webhooks with minimal permissions
+2. **Use dedicated channels** - Don't send to public channels
+3. **Rotate tokens regularly** - Especially for production monitoring
+4. **Monitor for abuse** - Check notification logs for unexpected activity
+
+## Examples by Service
+
+### Discord with Rich Embeds
+
+**URL:**
+```
+discord://webhook_id/webhook_token?footer=yes&footer_logo=yes
+```
+
+**Title:**
+```jinja2
+🔔 {{watch_title}} Updated
+```
+
+**Body:**
+```jinja2
+**Changes detected:**
+{{diff}}
+
+[View full comparison]({{diff_url}})
+```
+
+### Slack with Formatting
+
+**URL:**
+```
+slack://tokenA/tokenB/tokenC
+```
+
+**Title:**
+```jinja2
+:bell: Change Alert
+```
+
+**Body:**
+```jinja2
+*{{watch_title}}* has been updated!
+
+<{{diff_url}}|View Changes> | <{{watch_url}}|Visit Page>
+```
+
+### Telegram with Markdown
+
+**Format:** Markdown to HTML
+
+**URL:**
+```
+tgram://bot_token/chat_id
+```
+
+**Body:**
+```markdown
+**Alert:** {{watch_title}}
+
+{{diff}}
+
+[View changes]({{diff_url}})
+```
+
+### Email with HTML
+
+**Format:** HTML
+
+**URL:**
+```
+mailto://user:pass@smtp.gmail.com?to=recipient@example.com
+```
+
+**Body:**
+```html
+<h2>Change Detected</h2>
+<p><strong>URL:</strong> <a href="{{watch_url}}">{{watch_url}}</a></p>
+<p><strong>Changes:</strong></p>
+<pre>{{diff}}</pre>
+<p><a href="{{diff_url}}">View full comparison</a></p>
+```
+
+## Related Features
+
+<CardGroup cols={2}>
+  <Card title="Conditional Monitoring" icon="filter-circle-dollar" href="/features/conditional-monitoring">
+    Only send notifications when conditions are met
+  </Card>
+  <Card title="Scheduling" icon="clock" href="/features/scheduling">
+    Control when checks run and notifications send
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<Steps>
+  <Step title="Choose Your Service">
+    Pick a notification service and get your webhook/token
+  </Step>
+  
+  <Step title="Configure Notification URL">
+    Add the URL to global settings or a test watch
+  </Step>
+  
+  <Step title="Customize Messages">
+    Use Jinja2 variables to create informative notifications
+  </Step>
+  
+  <Step title="Test Delivery">
+    Trigger a test notification and verify receipt
+  </Step>
+</Steps>

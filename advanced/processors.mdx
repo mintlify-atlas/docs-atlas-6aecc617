@@ -1,0 +1,383 @@
+---
+title: Processors
+description: Understanding and using change detection processors for different monitoring scenarios
+---
+
+Processors are specialized engines that determine how changedetection.io analyzes and detects changes in web content. Each processor is optimized for specific monitoring scenarios.
+
+## Available Processors
+
+Changedetection.io includes three built-in processors:
+
+<CardGroup cols={3}>
+  <Card title="text_json_diff" icon="file-lines" href="#text-json-diff-processor">
+    Default processor for text and JSON comparison
+  </Card>
+  <Card title="restock_diff" icon="tag" href="#restock-diff-processor">
+    Product restock and price monitoring
+  </Card>
+  <Card title="image_ssim_diff" icon="image" href="#image-ssim-diff-processor">
+    Visual screenshot comparison
+  </Card>
+</CardGroup>
+
+## text_json_diff Processor
+
+The default processor for general-purpose change detection. Compares text content extracted from web pages and identifies additions, deletions, and modifications.
+
+### When to Use
+
+- Monitoring article content changes
+- Tracking job postings or classifieds
+- Detecting updates in documentation
+- Watching for new social media posts
+- General web page change detection
+- JSON API monitoring
+
+### Features
+
+**Text Extraction**
+- Converts HTML to readable text using inscriptis
+- Preserves formatting and structure
+- Handles embedded JSON (JSON-LD, application/json scripts)
+
+**Filtering Capabilities**
+- CSS selectors for element targeting
+- XPath 1.0, 2.0, and 3.0 support
+- JSONPath and jq for JSON data
+- Regular expressions for text matching
+- Element removal filters
+
+**Diff Detection**
+- Character-level, word-level, and line-level comparison
+- Highlighted additions and deletions
+- Context-aware diff display
+- PDF text change detection
+
+### Configuration
+
+In the watch settings, ensure **Processor** is set to `text_json_diff` (default).
+
+```python Example API Configuration
+{
+  "url": "https://example.com/news",
+  "processor": "text_json_diff",
+  "include_filters": [
+    "css:.article-content"
+  ],
+  "ignore_text": [
+    "regex:Last updated.*"
+  ]
+}
+```
+
+### Use Cases
+
+<AccordionGroup>
+  <Accordion title="News Article Monitoring">
+    Track updates to news articles or blog posts:
+
+    ```
+    URL: https://example.com/article
+    Include filter: css:.article-body
+    Ignore text: regex:Published.*|regex:Updated.*
+    ```
+
+    The processor will detect when article content changes while ignoring timestamp updates.
+  </Accordion>
+
+  <Accordion title="Job Posting Tracking">
+    Monitor job boards for new positions:
+
+    ```
+    URL: https://careers.company.com
+    Include filter: css:.job-listing
+    Trigger: Trigger on text contains "Senior Developer"
+    ```
+
+    Get alerts when specific job titles appear.
+  </Accordion>
+
+  <Accordion title="JSON API Monitoring">
+    Watch for changes in API responses:
+
+    ```
+    URL: https://api.example.com/data
+    Include filter: jq:.items[] | select(.status == "active")
+    ```
+
+    The processor automatically detects JSON content and allows filtering with jq or JSONPath.
+  </Accordion>
+</AccordionGroup>
+
+## restock_diff Processor
+
+Specialized processor for e-commerce product monitoring. Automatically extracts product metadata (price, availability, SKU) and intelligently detects restocks and price changes.
+
+### When to Use
+
+- Monitoring product availability
+- Tracking price changes
+- Detecting back-in-stock notifications
+- Watching for sales and discounts
+- E-commerce inventory monitoring
+
+### Features
+
+**Automatic Metadata Extraction**
+- JSON-LD structured data (schema.org Product)
+- Open Graph meta tags
+- Microdata and RDFa
+- Fallback HTML parsing
+
+**Intelligent Detection**
+- Price parsing with currency support (via Babel)
+- Stock status detection (in stock, out of stock, on backorder)
+- Stock quantity tracking
+- Sale price vs regular price
+
+**Notification Variables**
+- `{price}` - Current product price
+- `{stock_status}` - Availability status
+- `{stock_quantity}` - Number of items in stock
+- `{product_name}` - Product title
+- `{product_sku}` - Product SKU/identifier
+
+### Configuration
+
+In watch settings:
+1. Set **Processor** to `restock_diff`
+2. Configure price thresholds under **Price & Restock Settings**
+
+```python Example API Configuration
+{
+  "url": "https://shop.example.com/product/12345",
+  "processor": "restock_diff",
+  "processor_config_restock_diff": {
+    "price_change_min": 10.00,
+    "price_change_max": 500.00,
+    "price_change_threshold_percent": 5,
+    "restock_comparison_mode": "changes_only"
+  }
+}
+```
+
+### Price Thresholds
+
+<ParamField path="price_change_min" type="number">
+  Minimum price to trigger notification (alerts only if price is at or above this value)
+</ParamField>
+
+<ParamField path="price_change_max" type="number">
+  Maximum price to trigger notification (alerts only if price is at or below this value)
+</ParamField>
+
+<ParamField path="price_change_threshold_percent" type="number">
+  Percentage change required to trigger notification (for example, 5 means 5% change)
+</ParamField>
+
+<ParamField path="restock_comparison_mode" type="string">
+  - `changes_only` - Alert only when stock status changes
+  - `always_trigger` - Alert on every check if in stock
+</ParamField>
+
+### Use Cases
+
+<AccordionGroup>
+  <Accordion title="GPU Restock Alerts">
+    Get notified when high-demand electronics come back in stock:
+
+    ```
+    URL: https://store.example.com/rtx-4090
+    Processor: restock_diff
+    Mode: changes_only
+    ```
+
+    Alert triggers when status changes from "Out of Stock" to "In Stock".
+  </Accordion>
+
+  <Accordion title="Price Drop Monitoring">
+    Track when a product drops below your target price:
+
+    ```
+    URL: https://shop.example.com/laptop
+    Processor: restock_diff
+    Price max: $1200
+    Price change %: 10
+    ```
+
+    Get alerts when price drops 10% or more and falls below $1200.
+  </Accordion>
+
+  <Accordion title="Limited Edition Product Tracking">
+    Monitor sneaker drops and limited releases:
+
+    ```
+    URL: https://sneakers.example.com/jordan-1
+    Processor: restock_diff
+    Mode: changes_only
+    Check interval: 1 minute
+    ```
+
+    Fastest possible restock detection with minimal delay.
+  </Accordion>
+</AccordionGroup>
+
+<Note>
+  The restock processor works best on product pages with structured data. Check the **Stats** tab after the first check to see what metadata was extracted.
+</Note>
+
+## image_ssim_diff Processor
+
+Visual comparison processor that detects changes in webpage screenshots using structural similarity analysis (SSIM).
+
+### When to Use
+
+- Monitoring visual changes (design, layout, images)
+- Detecting defacement or unauthorized modifications
+- Watching for banner/ad changes
+- Tracking visual elements that change frequently
+- Monitoring pages where text extraction is difficult
+
+### Features
+
+**Screenshot Capture**
+- Requires Playwright browser integration
+- Full-page or viewport screenshots
+- Configurable viewport sizes
+
+**Image Comparison**
+- SSIM (Structural Similarity Index) algorithm
+- Configurable similarity threshold
+- Pixel-level difference detection
+- Visual diff highlighting
+
+**Performance**
+- Optional OpenCV acceleration (faster processing)
+- Fallback to pixelmatch when OpenCV unavailable
+- Automatic image optimization
+
+### Configuration
+
+1. Enable Playwright browser (required for screenshots)
+2. Set **Processor** to `image_ssim_diff`
+3. Configure SSIM threshold
+
+```python Example API Configuration
+{
+  "url": "https://example.com",
+  "processor": "image_ssim_diff",
+  "fetch_backend": "html_webdriver",
+  "webdriver_screenshot": true,
+  "processor_config_image_ssim_diff": {
+    "similarity_threshold": 0.95
+  }
+}
+```
+
+<ParamField path="similarity_threshold" type="number" default="0.95">
+  SSIM threshold (0-1). Lower values = more sensitive to changes.
+  - 0.99 = Very strict (tiny changes trigger)
+  - 0.95 = Balanced (recommended)
+  - 0.90 = Loose (only major changes)
+</ParamField>
+
+### Use Cases
+
+<AccordionGroup>
+  <Accordion title="Website Defacement Detection">
+    Monitor for unauthorized changes to your website:
+
+    ```
+    URL: https://mysite.com
+    Processor: image_ssim_diff
+    Threshold: 0.99 (very strict)
+    Check interval: 5 minutes
+    ```
+
+    Immediate alerts for any visual changes.
+  </Accordion>
+
+  <Accordion title="Banner Ad Monitoring">
+    Track when promotional banners change:
+
+    ```
+    URL: https://store.example.com
+    Processor: image_ssim_diff
+    Visual Selector: css:#promo-banner
+    Threshold: 0.90
+    ```
+
+    Detect when hero images or promotional content updates.
+  </Accordion>
+
+  <Accordion title="Dashboard Monitoring">
+    Watch for changes in data visualization dashboards:
+
+    ```
+    URL: https://analytics.company.com/dashboard
+    Processor: image_ssim_diff
+    Browser Steps: login sequence
+    Threshold: 0.85
+    ```
+
+    Monitor behind-login dashboards with visual comparison.
+  </Accordion>
+</AccordionGroup>
+
+<Warning>
+  Screenshot comparison is resource-intensive. Use sparingly and increase check intervals to avoid performance issues.
+</Warning>
+
+## Processor Comparison
+
+| Feature | text_json_diff | restock_diff | image_ssim_diff |
+|---------|---------------|--------------|------------------|
+| **Best For** | General content | E-commerce | Visual changes |
+| **Browser Required** | No | No | Yes (Playwright) |
+| **Performance** | Fast | Fast | Slow |
+| **CPU Usage** | Low | Low | High |
+| **Memory Usage** | Low | Low | High |
+| **Filtering** | CSS, XPath, JSON | Limited | Visual Selector |
+| **Diff Granularity** | Text-level | Metadata-level | Pixel-level |
+
+## Switching Processors
+
+You can change a watch's processor at any time:
+
+<Steps>
+  <Step title="Open watch settings">
+    Click the **Edit** button next to your watch
+  </Step>
+  
+  <Step title="Select processor">
+    In the **Processor** dropdown, choose your desired processor
+  </Step>
+  
+  <Step title="Configure processor settings">
+    Each processor has unique configuration options that appear after selection
+  </Step>
+  
+  <Step title="Re-check watch">
+    Click **Re-check** to apply the new processor and establish a baseline
+  </Step>
+</Steps>
+
+<Tip>
+  The first check after switching processors establishes a new baseline. Subsequent checks will compare against this baseline.
+</Tip>
+
+## Creating Custom Processors
+
+See [Plugins](/advanced/plugins) for information on creating custom processor plugins.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Plugin System" icon="puzzle-piece" href="/advanced/plugins">
+    Learn how to create custom processor plugins
+  </Card>
+  <Card title="Content Filtering" icon="filter" href="/extraction/css-selectors">
+    Master CSS selectors and XPath for precise targeting
+  </Card>
+</CardGroup>

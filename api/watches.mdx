@@ -1,0 +1,620 @@
+---
+title: Watches
+description: Create and manage web page change monitors
+---
+
+# Watch Management
+
+Watches are the core of changedetection.io - each watch monitors a single URL for changes. Use these endpoints to create, retrieve, update, and delete watches programmatically.
+
+## List All Watches
+
+<ParamField path="GET" type="endpoint">
+  /api/v1/watch
+</ParamField>
+
+Retrieve a list of all watches with basic information.
+
+### Query Parameters
+
+<ParamField query="tag" type="string">
+  Filter watches by tag name (not UUID)
+</ParamField>
+
+<ParamField query="recheck_all" type="string" default="">
+  Set to `"1"` to trigger recheck of all watches
+</ParamField>
+
+### Response Fields
+
+<ResponseField name="uuid" type="string">
+  Unique identifier for the watch
+</ResponseField>
+
+<ResponseField name="url" type="string">
+  The raw URL being monitored (may contain Jinja2 templates)
+</ResponseField>
+
+<ResponseField name="link" type="string">
+  The rendered URL (Jinja2 processed) - always use this for display
+</ResponseField>
+
+<ResponseField name="title" type="string">
+  Custom title for the watch
+</ResponseField>
+
+<ResponseField name="page_title" type="string">
+  HTML `<title>` tag from the page
+</ResponseField>
+
+<ResponseField name="tags" type="array">
+  Array of tag UUIDs associated with this watch
+</ResponseField>
+
+<ResponseField name="last_checked" type="integer">
+  Unix timestamp of last check
+</ResponseField>
+
+<ResponseField name="last_changed" type="integer">
+  Unix timestamp of last detected change
+</ResponseField>
+
+<ResponseField name="last_error" type="string | boolean">
+  Last error message, `false` if no error, `null` if never checked
+</ResponseField>
+
+### Example
+
+<CodeGroup>
+```bash cURL
+curl -X GET "http://localhost:5000/api/v1/watch" \
+  -H "x-api-key: YOUR_API_KEY"
+```
+
+```python Python
+import requests
+
+headers = {'x-api-key': 'YOUR_API_KEY'}
+response = requests.get(
+    'http://localhost:5000/api/v1/watch',
+    headers=headers
+)
+print(response.json())
+```
+</CodeGroup>
+
+<ResponseExample>
+```json
+{
+  "095be615-a8ad-4c33-8e9c-c7612fbf6c9f": {
+    "uuid": "095be615-a8ad-4c33-8e9c-c7612fbf6c9f",
+    "url": "http://example.com?id={{1+1}}",
+    "link": "http://example.com?id=2",
+    "title": "Example Website Monitor",
+    "page_title": "Example Domain",
+    "tags": ["550e8400-e29b-41d4-a716-446655440000"],
+    "paused": false,
+    "notification_muted": false,
+    "last_checked": 1640995200,
+    "last_changed": 1640995200,
+    "last_error": false,
+    "viewed": true
+  }
+}
+```
+</ResponseExample>
+
+---
+
+## Create a Watch
+
+<ParamField path="POST" type="endpoint">
+  /api/v1/watch
+</ParamField>
+
+Create a new watch to monitor a URL.
+
+### Request Body
+
+<ParamField body="url" type="string" required>
+  URL to monitor (must use http://, https://, or ftp:// protocol)
+</ParamField>
+
+<ParamField body="title" type="string">
+  Custom title for the watch
+</ParamField>
+
+<ParamField body="tags" type="array">
+  Array of tag UUIDs to associate with this watch
+</ParamField>
+
+<ParamField body="tag" type="string">
+  Single tag UUID (alternative to `tags` array)
+</ParamField>
+
+<ParamField body="processor" type="string" default="text_json_diff">
+  Processor mode: `text_json_diff` or `restock_diff`
+</ParamField>
+
+<ParamField body="fetch_backend" type="string" default="system">
+  Fetcher to use: `system`, `html_requests`, `html_webdriver`, or `extra_browser_*`
+</ParamField>
+
+<ParamField body="paused" type="boolean" default={false}>
+  Whether the watch is paused
+</ParamField>
+
+<ParamField body="notification_muted" type="boolean" default={false}>
+  Whether notifications are muted
+</ParamField>
+
+<ParamField body="notification_urls" type="array">
+  Array of notification URLs (Apprise format)
+</ParamField>
+
+<ParamField body="time_between_check" type="object">
+  Check interval with fields: `weeks`, `days`, `hours`, `minutes`, `seconds`
+</ParamField>
+
+<ParamField body="time_between_check_use_default" type="boolean" default={true}>
+  Use global check interval settings
+</ParamField>
+
+<ParamField body="include_filters" type="array">
+  CSS/XPath selectors to extract content
+</ParamField>
+
+<ParamField body="subtractive_selectors" type="array">
+  CSS/XPath selectors to remove content
+</ParamField>
+
+<ParamField body="ignore_text" type="array">
+  Text patterns to ignore in change detection
+</ParamField>
+
+<ParamField body="trigger_text" type="array">
+  Text patterns that must be present to trigger
+</ParamField>
+
+### Example
+
+<CodeGroup>
+```bash cURL
+curl -X POST "http://localhost:5000/api/v1/watch" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://example.com",
+    "title": "Example Site Monitor",
+    "time_between_check": {
+      "hours": 1
+    }
+  }'
+```
+
+```python Python
+import requests
+
+headers = {
+    'x-api-key': 'YOUR_API_KEY',
+    'Content-Type': 'application/json'
+}
+data = {
+    'url': 'https://example.com',
+    'title': 'Example Site Monitor',
+    'time_between_check': {
+        'hours': 1
+    }
+}
+response = requests.post(
+    'http://localhost:5000/api/v1/watch',
+    headers=headers,
+    json=data
+)
+print(response.json())
+```
+</CodeGroup>
+
+<ResponseExample>
+```json
+{
+  "uuid": "095be615-a8ad-4c33-8e9c-c7612fbf6c9f"
+}
+```
+</ResponseExample>
+
+---
+
+## Get a Single Watch
+
+<ParamField path="GET" type="endpoint">
+  /api/v1/watch/{uuid}
+</ParamField>
+
+Retrieve complete information about a specific watch.
+
+### Path Parameters
+
+<ParamField path="uuid" type="string" required>
+  UUID of the watch
+</ParamField>
+
+### Query Parameters
+
+<ParamField query="recheck" type="string">
+  Set to `"1"` or `"true"` to trigger immediate recheck
+</ParamField>
+
+<ParamField query="paused" type="string">
+  Set to `"paused"` or `"unpaused"` to change pause state
+</ParamField>
+
+<ParamField query="muted" type="string">
+  Set to `"muted"` or `"unmuted"` to change mute state
+</ParamField>
+
+### Example
+
+<CodeGroup>
+```bash cURL
+# Get watch info
+curl -X GET "http://localhost:5000/api/v1/watch/095be615-a8ad-4c33-8e9c-c7612fbf6c9f" \
+  -H "x-api-key: YOUR_API_KEY"
+
+# Trigger recheck
+curl -X GET "http://localhost:5000/api/v1/watch/095be615-a8ad-4c33-8e9c-c7612fbf6c9f?recheck=1" \
+  -H "x-api-key: YOUR_API_KEY"
+```
+
+```python Python
+import requests
+
+headers = {'x-api-key': 'YOUR_API_KEY'}
+uuid = '095be615-a8ad-4c33-8e9c-c7612fbf6c9f'
+
+# Get watch info
+response = requests.get(
+    f'http://localhost:5000/api/v1/watch/{uuid}',
+    headers=headers
+)
+print(response.json())
+
+# Trigger recheck
+response = requests.get(
+    f'http://localhost:5000/api/v1/watch/{uuid}',
+    headers=headers,
+    params={'recheck': '1'}
+)
+print(response.text)  # "OK"
+```
+</CodeGroup>
+
+---
+
+## Update a Watch
+
+<ParamField path="PUT" type="endpoint">
+  /api/v1/watch/{uuid}
+</ParamField>
+
+Update an existing watch. Only include fields you want to change.
+
+### Path Parameters
+
+<ParamField path="uuid" type="string" required>
+  UUID of the watch to update
+</ParamField>
+
+### Request Body
+
+Accepts the same fields as Create Watch. Only specified fields will be updated.
+
+<ParamField body="last_viewed" type="integer">
+  Unix timestamp to mark the watch as viewed (set higher than `last_changed`)
+</ParamField>
+
+### Example
+
+<CodeGroup>
+```bash cURL
+curl -X PUT "http://localhost:5000/api/v1/watch/095be615-a8ad-4c33-8e9c-c7612fbf6c9f" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Updated Monitor Title",
+    "paused": false
+  }'
+```
+
+```python Python
+import requests
+
+headers = {
+    'x-api-key': 'YOUR_API_KEY',
+    'Content-Type': 'application/json'
+}
+uuid = '095be615-a8ad-4c33-8e9c-c7612fbf6c9f'
+data = {
+    'title': 'Updated Monitor Title',
+    'paused': False
+}
+
+response = requests.put(
+    f'http://localhost:5000/api/v1/watch/{uuid}',
+    headers=headers,
+    json=data
+)
+print(response.text)  # "OK"
+```
+</CodeGroup>
+
+---
+
+## Delete a Watch
+
+<ParamField path="DELETE" type="endpoint">
+  /api/v1/watch/{uuid}
+</ParamField>
+
+Delete a watch and all its history.
+
+### Path Parameters
+
+<ParamField path="uuid" type="string" required>
+  UUID of the watch to delete
+</ParamField>
+
+### Example
+
+<CodeGroup>
+```bash cURL
+curl -X DELETE "http://localhost:5000/api/v1/watch/095be615-a8ad-4c33-8e9c-c7612fbf6c9f" \
+  -H "x-api-key: YOUR_API_KEY"
+```
+
+```python Python
+import requests
+
+headers = {'x-api-key': 'YOUR_API_KEY'}
+uuid = '095be615-a8ad-4c33-8e9c-c7612fbf6c9f'
+
+response = requests.delete(
+    f'http://localhost:5000/api/v1/watch/{uuid}',
+    headers=headers
+)
+print(response.status_code)  # 204
+```
+</CodeGroup>
+
+---
+
+## Get Watch History
+
+<ParamField path="GET" type="endpoint">
+  /api/v1/watch/{uuid}/history
+</ParamField>
+
+Get a list of all available snapshots for a watch.
+
+### Path Parameters
+
+<ParamField path="uuid" type="string" required>
+  UUID of the watch
+</ParamField>
+
+### Example
+
+<CodeGroup>
+```bash cURL
+curl -X GET "http://localhost:5000/api/v1/watch/095be615-a8ad-4c33-8e9c-c7612fbf6c9f/history" \
+  -H "x-api-key: YOUR_API_KEY"
+```
+
+```python Python
+import requests
+
+headers = {'x-api-key': 'YOUR_API_KEY'}
+uuid = '095be615-a8ad-4c33-8e9c-c7612fbf6c9f'
+
+response = requests.get(
+    f'http://localhost:5000/api/v1/watch/{uuid}/history',
+    headers=headers
+)
+print(response.json())
+```
+</CodeGroup>
+
+<ResponseExample>
+```json
+{
+  "1640995200": "/path/to/snapshot1.txt",
+  "1640998800": "/path/to/snapshot2.txt",
+  "1641002400": "/path/to/snapshot3.txt"
+}
+```
+</ResponseExample>
+
+---
+
+## Get Single Snapshot
+
+<ParamField path="GET" type="endpoint">
+  /api/v1/watch/{uuid}/history/{timestamp}
+</ParamField>
+
+Retrieve a specific snapshot by timestamp.
+
+### Path Parameters
+
+<ParamField path="uuid" type="string" required>
+  UUID of the watch
+</ParamField>
+
+<ParamField path="timestamp" type="string | integer" required>
+  Unix timestamp or `"latest"` for most recent snapshot
+</ParamField>
+
+### Query Parameters
+
+<ParamField query="html" type="string">
+  Set to `"1"` to return raw HTML instead of processed text
+</ParamField>
+
+### Example
+
+<CodeGroup>
+```bash cURL
+# Get latest snapshot (processed text)
+curl -X GET "http://localhost:5000/api/v1/watch/095be615-a8ad-4c33-8e9c-c7612fbf6c9f/history/latest" \
+  -H "x-api-key: YOUR_API_KEY"
+
+# Get raw HTML
+curl -X GET "http://localhost:5000/api/v1/watch/095be615-a8ad-4c33-8e9c-c7612fbf6c9f/history/latest?html=1" \
+  -H "x-api-key: YOUR_API_KEY"
+```
+
+```python Python
+import requests
+
+headers = {'x-api-key': 'YOUR_API_KEY'}
+uuid = '095be615-a8ad-4c33-8e9c-c7612fbf6c9f'
+
+# Get latest snapshot
+response = requests.get(
+    f'http://localhost:5000/api/v1/watch/{uuid}/history/latest',
+    headers=headers
+)
+print(response.text)
+
+# Get raw HTML
+response = requests.get(
+    f'http://localhost:5000/api/v1/watch/{uuid}/history/latest',
+    headers=headers,
+    params={'html': '1'}
+)
+print(response.text)
+```
+</CodeGroup>
+
+---
+
+## Get Snapshot Diff
+
+<ParamField path="GET" type="endpoint">
+  /api/v1/watch/{uuid}/difference/{from_timestamp}/{to_timestamp}
+</ParamField>
+
+Compare two snapshots and get the differences.
+
+### Path Parameters
+
+<ParamField path="uuid" type="string" required>
+  UUID of the watch
+</ParamField>
+
+<ParamField path="from_timestamp" type="string | integer" required>
+  Starting timestamp or `"previous"` for second-most-recent
+</ParamField>
+
+<ParamField path="to_timestamp" type="string | integer" required>
+  Ending timestamp or `"latest"` for most recent
+</ParamField>
+
+### Query Parameters
+
+<ParamField query="format" type="string" default="text">
+  Output format: `text`, `html`, `htmlcolor`, or `markdown`
+</ParamField>
+
+<ParamField query="word_diff" type="boolean" default={false}>
+  Enable word-level diffing (vs line-level)
+</ParamField>
+
+<ParamField query="no_markup" type="boolean" default={false}>
+  Return raw diff without formatting
+</ParamField>
+
+<ParamField query="changesOnly" type="boolean" default={true}>
+  Show only changed lines (no context)
+</ParamField>
+
+<ParamField query="ignoreWhitespace" type="boolean" default={false}>
+  Ignore whitespace-only changes
+</ParamField>
+
+<ParamField query="removed" type="boolean" default={true}>
+  Include removed content
+</ParamField>
+
+<ParamField query="added" type="boolean" default={true}>
+  Include added content
+</ParamField>
+
+<ParamField query="replaced" type="boolean" default={true}>
+  Include replaced content
+</ParamField>
+
+### Example
+
+<CodeGroup>
+```bash cURL
+# Compare previous to latest with colored HTML
+curl -X GET "http://localhost:5000/api/v1/watch/095be615-a8ad-4c33-8e9c-c7612fbf6c9f/difference/previous/latest?format=htmlcolor" \
+  -H "x-api-key: YOUR_API_KEY"
+```
+
+```python Python
+import requests
+
+headers = {'x-api-key': 'YOUR_API_KEY'}
+uuid = '095be615-a8ad-4c33-8e9c-c7612fbf6c9f'
+
+response = requests.get(
+    f'http://localhost:5000/api/v1/watch/{uuid}/difference/previous/latest',
+    headers=headers,
+    params={'format': 'htmlcolor'}
+)
+print(response.text)
+```
+</CodeGroup>
+
+---
+
+## Get Watch Favicon
+
+<ParamField path="GET" type="endpoint">
+  /api/v1/watch/{uuid}/favicon
+</ParamField>
+
+Retrieve the favicon for a watch.
+
+### Path Parameters
+
+<ParamField path="uuid" type="string" required>
+  UUID of the watch
+</ParamField>
+
+### Example
+
+<CodeGroup>
+```bash cURL
+curl -X GET "http://localhost:5000/api/v1/watch/095be615-a8ad-4c33-8e9c-c7612fbf6c9f/favicon" \
+  -H "x-api-key: YOUR_API_KEY" \
+  --output favicon.ico
+```
+
+```python Python
+import requests
+
+headers = {'x-api-key': 'YOUR_API_KEY'}
+uuid = '095be615-a8ad-4c33-8e9c-c7612fbf6c9f'
+
+response = requests.get(
+    f'http://localhost:5000/api/v1/watch/{uuid}/favicon',
+    headers=headers
+)
+
+with open('favicon.ico', 'wb') as f:
+    f.write(response.content)
+```
+</CodeGroup>

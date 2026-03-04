@@ -1,0 +1,433 @@
+---
+title: Playwright Browser Integration
+description: Use Playwright for JavaScript rendering and advanced web scraping
+---
+
+Playwright is the recommended browser integration for changedetection.io, providing robust JavaScript rendering, screenshots, and advanced automation capabilities through browser steps.
+
+## What Playwright Provides
+
+Playwright offers the most comprehensive browser automation features:
+
+- **Full JavaScript Rendering** - Execute and wait for JavaScript to complete before capturing content
+- **High-Quality Screenshots** - Capture full-page screenshots with configurable quality and format (PNG/JPEG)
+- **Browser Steps Support** - Automate interactions like clicking buttons, filling forms, and logging in
+- **Visual Selector** - Point-and-click element selection for precise monitoring
+- **XPath Element Data** - Extract structured data from page elements
+- **Advanced Screenshot Stitching** - Automatically stitch large pages up to 16,000px height
+- **Network Control** - Access response headers, status codes, and network events
+- **Proxy Support** - Full proxy configuration including authentication
+
+## Docker Configuration
+
+To enable Playwright, you need to run a browser service alongside changedetection.io. The recommended approach uses **sockpuppetbrowser** (a Chrome wrapper optimized for Playwright).
+
+### Using docker-compose.yml
+
+Uncomment the browser service in your `docker-compose.yml`:
+
+```yaml
+services:
+  changedetection:
+    image: ghcr.io/dgtlmoon/changedetection.io
+    environment:
+      # Connect to the Playwright browser service
+      - PLAYWRIGHT_DRIVER_URL=ws://browser-sockpuppet-chrome:3000
+    depends_on:
+      browser-sockpuppet-chrome:
+        condition: service_started
+
+  # Sockpuppetbrowser - Chrome wrapped in API for fast fetching
+  browser-sockpuppet-chrome:
+    hostname: browser-sockpuppet-chrome
+    image: dgtlmoon/sockpuppetbrowser:latest
+    cap_add:
+      - SYS_ADMIN
+    restart: unless-stopped
+    environment:
+      - SCREEN_WIDTH=1920
+      - SCREEN_HEIGHT=1024
+      - SCREEN_DEPTH=16
+      - MAX_CONCURRENT_CHROME_PROCESSES=10
+```
+
+### Environment Variables
+
+#### Required Configuration
+
+**PLAYWRIGHT_DRIVER_URL** - WebSocket URL to connect to the browser service
+```bash
+PLAYWRIGHT_DRIVER_URL=ws://browser-sockpuppet-chrome:3000
+```
+
+#### Optional Configuration
+
+**PLAYWRIGHT_BROWSER_TYPE** - Browser engine to use (default: `chromium`)
+```bash
+PLAYWRIGHT_BROWSER_TYPE=chromium  # or firefox, webkit
+```
+
+**WEBDRIVER_DELAY_BEFORE_CONTENT_READY** - Seconds to wait after page load (default: 5)
+```bash
+WEBDRIVER_DELAY_BEFORE_CONTENT_READY=5
+```
+
+**SCREENSHOT_QUALITY** - JPEG screenshot quality 1-100 (default: 72)
+```bash
+SCREENSHOT_QUALITY=72
+```
+
+**SCREENSHOT_MAX_HEIGHT** - Maximum screenshot height in pixels (default: 20000)
+```bash
+SCREENSHOT_MAX_HEIGHT=16000
+```
+
+**SCREENSHOT_CHUNK_HEIGHT** - Height threshold for screenshot stitching (default: 10000)
+```bash
+SCREENSHOT_CHUNK_HEIGHT=10000
+```
+
+**PLAYWRIGHT_SERVICE_WORKERS** - Allow or block service workers (default: `allow`)
+```bash
+PLAYWRIGHT_SERVICE_WORKERS=block  # Useful for sites like YouTube
+```
+
+#### Proxy Configuration
+
+Playwright supports dedicated proxy settings with the `playwright_proxy_` prefix:
+
+```bash
+playwright_proxy_server=http://proxy.example.com:8080
+playwright_proxy_username=user
+playwright_proxy_password=pass
+playwright_proxy_bypass=localhost,127.0.0.1
+```
+
+SOCKS5 with authentication is not currently supported by Playwright.
+
+## When to Use Playwright
+
+Choose Playwright over the simple HTTP fetcher when:
+
+### JavaScript-Heavy Websites
+- Content is loaded dynamically via AJAX or React/Vue/Angular frameworks
+- Prices, stock status, or data appear after page load
+- Content requires scrolling or user interaction to appear
+
+### Single Page Applications (SPAs)
+- Sites that don't use traditional page navigation
+- Modern web apps that update content without refreshing
+
+### Authentication Required
+- Logging into websites before monitoring protected content
+- Using Browser Steps to automate login flows
+- Maintaining session state across checks
+
+### Visual Monitoring
+- Tracking layout changes or visual elements
+- Monitoring images, charts, or dynamically rendered graphics
+- Using screenshots for visual comparison
+
+### Anti-Bot Protection
+- Sites using Cloudflare or similar protection
+- Pages that block simple HTTP requests
+- Sites checking for browser fingerprints
+
+## JavaScript Rendering
+
+Playwright executes all JavaScript on the page and waits for content to stabilize before extracting data.
+
+### Custom JavaScript Execution
+
+You can run custom JavaScript code before content extraction:
+
+```javascript
+// Wait for specific element
+await new Promise(r => setTimeout(r, 2000));
+document.querySelector('.load-more').click();
+
+// Scroll to load lazy content
+window.scrollTo(0, document.body.scrollHeight);
+
+// Modify page before capture
+document.querySelector('.annoying-popup').remove();
+```
+
+Set this in the watch configuration under **"Execute JavaScript before page extraction"**.
+
+### Render Delays
+
+Playwright automatically waits for:
+1. Page navigation to complete
+2. DOM content to be loaded  
+3. Network requests to settle
+4. Additional delay configured via `WEBDRIVER_DELAY_BEFORE_CONTENT_READY`
+
+## Screenshots and Visual Comparison
+
+### Screenshot Formats
+
+**JPEG** (recommended for most uses)
+- Smaller file size
+- Configurable quality (1-100)
+- Faster processing
+- Good for content monitoring
+
+**PNG**
+- Lossless quality
+- Larger file size
+- Better for visual comparison
+- Preserves transparency
+
+### Full-Page Screenshots
+
+Playwright captures the entire page automatically:
+
+1. **Single Viewport** - For pages smaller than viewport height, captures in one shot
+2. **Stitched Pages** - For tall pages, captures in chunks and stitches seamlessly
+3. **Memory Optimized** - Uses subprocess isolation to prevent memory leaks
+4. **Height Limit** - Respects `SCREENSHOT_MAX_TOTAL_HEIGHT` to prevent excessive memory use
+
+### Screenshot Stitching Process
+
+```plaintext
+Page Height: 25,000px
+Viewport: 1920x1024px
+Chunk Size: 10,000px
+
+→ Capture 3 chunks:
+  - Chunk 1: 0-10,000px
+  - Chunk 2: 10,000-20,000px  
+  - Chunk 3: 20,000-16,000px (limited by SCREENSHOT_MAX_HEIGHT)
+
+→ Stitch in separate process to avoid memory leaks
+→ Return final JPEG/PNG screenshot
+```
+
+### Visual Selector Integration
+
+With Playwright enabled, the Visual Selector tool becomes available:
+
+1. Click elements on the screenshot to select them
+2. Generate XPath automatically  
+3. Preview extracted content in real-time
+4. Refine selections with multiple elements
+
+See [Visual Selector documentation](/features/visual-selector) for details.
+
+## Performance Considerations
+
+### Resource Usage
+
+**Memory**
+- Browser processes: ~200-500MB per concurrent watch
+- Screenshots: ~5-50MB depending on page size and quality
+- Stitching subprocess: temporary memory spike, then released
+
+**CPU**
+- JavaScript execution and rendering
+- Screenshot encoding (JPEG/PNG)
+- Image stitching for large pages
+
+**Network**
+- WebSocket connection to browser service
+- Screenshots transferred as base64 (use lower quality to reduce overhead)
+- All page resources (images, CSS, JS) are fetched
+
+### Optimization Tips
+
+1. **Lower Screenshot Quality** - Set `SCREENSHOT_QUALITY=40` for smaller transfers
+2. **Limit Screenshot Height** - Reduce `SCREENSHOT_MAX_HEIGHT` if not needed
+3. **Block Service Workers** - Set `PLAYWRIGHT_SERVICE_WORKERS=block` for media sites
+4. **Concurrent Processes** - Adjust `MAX_CONCURRENT_CHROME_PROCESSES` based on RAM
+5. **Use Viewport Sizing** - Configure smaller viewport in sockpuppetbrowser for faster renders
+
+### Speed Comparison
+
+| Method | Speed | JavaScript | Screenshots | Browser Steps |
+|--------|-------|------------|-------------|---------------|
+| HTTP Requests | Fast (100ms) | No | No | No |
+| Playwright | Medium (2-5s) | Yes | Yes | Yes |
+| Selenium WebDriver | Slow (5-10s) | Yes | Limited | No |
+
+## Browser Steps Integration
+
+Playwright is the **only fetcher** that supports Browser Steps automation:
+
+### Supported Actions
+- Click elements
+- Fill text fields
+- Select dropdowns
+- Wait for elements
+- Execute custom JavaScript
+- Take screenshots at each step
+- Navigate between pages
+
+### Example: Login Flow
+
+```yaml
+1. Click "Login" button
+2. Fill username field: user@example.com
+3. Fill password field: ********
+4. Click "Submit"
+5. Wait 2 seconds
+6. Execute JS: console.log('Logged in')
+```
+
+See [Browser Steps documentation](/features/browser-steps) for complete automation guides.
+
+## Troubleshooting
+
+### Connection Issues
+
+If changedetection.io can't connect to Playwright:
+
+```bash
+# Check browser service is running
+docker ps | grep sockpuppet
+
+# Check WebSocket connection
+curl -i -N -H "Connection: Upgrade" -H "Upgrade: websocket" \
+  http://browser-sockpuppet-chrome:3000
+
+# Verify environment variable
+docker exec changedetection env | grep PLAYWRIGHT
+```
+
+### Memory Issues
+
+```bash
+# Reduce concurrent processes
+MAX_CONCURRENT_CHROME_PROCESSES=5
+
+# Lower screenshot limits
+SCREENSHOT_MAX_HEIGHT=10000
+SCREENSHOT_QUALITY=50
+```
+
+### Slow Performance
+
+```bash
+# Reduce wait time
+WEBDRIVER_DELAY_BEFORE_CONTENT_READY=2
+
+# Block unnecessary resources (add to Browser Steps)
+Execute JS: 
+navigator.serviceWorker.getRegistrations().then(r => 
+  r.forEach(reg => reg.unregister())
+);
+```
+
+### Screenshot Quality Issues
+
+```bash
+# Use PNG for lossless quality
+Select PNG format in watch settings
+
+# Increase JPEG quality
+SCREENSHOT_QUALITY=90
+```
+
+## Comparison with Other Fetchers
+
+### vs. HTTP Requests Fetcher
+
+**Playwright Advantages:**
+- Executes JavaScript
+- Gets real rendered content
+- Handles modern web apps
+- Takes screenshots
+- Supports automation
+
+**HTTP Requests Advantages:**
+- Much faster (100x)
+- Lower resource usage
+- Works for static content
+- No browser service needed
+
+### vs. Selenium WebDriver
+
+**Playwright Advantages:**
+- Better screenshot support (full page)
+- Reports HTTP status codes
+- More reliable
+- Supports Browser Steps
+- Better error handling
+- Active development
+
+**Selenium Disadvantages:**
+- Deprecated in changedetection.io
+- No Browser Steps support
+- Limited screenshot quality
+- No status code reporting
+- Legacy technology
+
+### vs. Puppeteer Direct
+
+**Playwright Advantages:**
+- More stable
+- Better maintained
+- Cross-browser support
+- Better error messages
+
+**Puppeteer Advantages:**
+- Slightly faster startup
+- Can be enabled with `FAST_PUPPETEER_CHROME_FETCHER=True`
+- Same underlying browser (Chrome)
+
+## Advanced Configuration
+
+### Custom Browser Connection
+
+Connect to external browser services:
+
+```bash
+PLAYWRIGHT_DRIVER_URL=wss://external-browser.example.com:3000
+```
+
+### Viewport Sizing
+
+Configure in sockpuppetbrowser startup:
+
+```bash
+# Mobile viewport
+SCREEN_WIDTH=375
+SCREEN_HEIGHT=667
+
+# Desktop
+SCREEN_WIDTH=1920  
+SCREEN_HEIGHT=1080
+
+# Tablet
+SCREEN_WIDTH=768
+SCREEN_HEIGHT=1024
+```
+
+### Multiple Browser Types
+
+```bash
+# Use Firefox instead of Chrome
+PLAYWRIGHT_BROWSER_TYPE=firefox
+
+# Use WebKit (Safari engine)
+PLAYWRIGHT_BROWSER_TYPE=webkit
+```
+
+## Best Practices
+
+1. **Start with HTTP Requests** - Only use Playwright when JavaScript is needed
+2. **Use Visual Selector** - Easier than writing XPath manually
+3. **Optimize Screenshots** - Balance quality vs. performance for your needs
+4. **Monitor Resource Usage** - Watch memory and CPU when scaling
+5. **Test Browser Steps** - Verify automation works before relying on it
+6. **Set Appropriate Delays** - Too short misses content, too long wastes time
+7. **Use Proxies Wisely** - Rotate IPs for high-volume monitoring
+8. **Regular Cleanup** - Restart browser service periodically to free memory
+
+## Related Documentation
+
+- [Browser Steps](/features/browser-steps) - Automate interactions before monitoring
+- [Visual Selector](/features/visual-selector) - Point-and-click element selection  
+- [Proxy Configuration](/configuration/proxy-setup) - Using proxies with Playwright
+- [Selenium WebDriver](/browser/selenium-webdriver) - Legacy browser option
+- [Chrome Extension](/browser/chrome-extension) - Add watches from your browser

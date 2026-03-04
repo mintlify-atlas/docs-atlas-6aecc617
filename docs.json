@@ -1,122 +1,118 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
-  "name": "Mint Starter Kit",
+  "name": "Changedetection.io",
+  "theme": "almond",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#040404",
+    "light": "#92a4d0",
+    "dark": "#393e72"
   },
   "favicon": "/favicon.svg",
+  "logo": {
+    "light": "https://media.brand.dev/be0ca938-ab6c-4f8d-8ee9-b2abcb3aeeda.svg",
+    "dark": "https://media.brand.dev/be0ca938-ab6c-4f8d-8ee9-b2abcb3aeeda.svg"
+  },
+  "navbar": {
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/dgtlmoon/changedetection.io"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/dgtlmoon/changedetection.io"
+    }
+  },
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Documentation",
         "groups": [
           {
-            "group": "Getting started",
+            "group": "Get Started",
             "pages": [
-              "index",
-              "quickstart",
-              "development"
+              "introduction",
+              "quickstart"
             ]
           },
           {
-            "group": "Customization",
+            "group": "Installation",
             "pages": [
-              "essentials/settings",
-              "essentials/navigation"
+              "installation/docker",
+              "installation/docker-compose",
+              "installation/pip",
+              "installation/windows"
             ]
           },
           {
-            "group": "Writing content",
+            "group": "Core Features",
             "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
+              "features/visual-selector",
+              "features/browser-steps",
+              "features/restock-price-monitoring",
+              "features/notifications",
+              "features/scheduling",
+              "features/conditional-monitoring"
             ]
           },
           {
-            "group": "AI tools",
+            "group": "Content Extraction",
             "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
+              "extraction/css-selectors",
+              "extraction/xpath",
+              "extraction/json-filtering",
+              "extraction/pdf-monitoring"
+            ]
+          },
+          {
+            "group": "Browser Integration",
+            "pages": [
+              "browser/playwright",
+              "browser/selenium-webdriver",
+              "browser/chrome-extension"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "configuration/proxy-setup",
+              "configuration/notifications-setup",
+              "configuration/environment-variables",
+              "configuration/importing-watches"
+            ]
+          },
+          {
+            "group": "Advanced",
+            "pages": [
+              "advanced/processors",
+              "advanced/plugins",
+              "advanced/custom-fetchers"
             ]
           }
         ]
       },
       {
-        "tab": "API reference",
+        "tab": "API Reference",
         "groups": [
           {
-            "group": "API documentation",
+            "group": "Overview",
             "pages": [
-              "api-reference/introduction"
+              "api/introduction",
+              "api/authentication"
             ]
           },
           {
-            "group": "Endpoint examples",
+            "group": "Endpoints",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "api/watches",
+              "api/tags",
+              "api/notifications",
+              "api/import",
+              "api/system-info"
             ]
           }
         ]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
-  },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
-  "navbar": {
-    "links": [
-      {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
-      }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
-    }
-  },
-  "contextual": {
-    "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
-  },
-  "footer": {
-    "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
-    }
+    ]
   }
 }

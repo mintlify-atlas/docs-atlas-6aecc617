@@ -1,0 +1,300 @@
+---
+title: Proxy Setup
+description: Configure HTTP, HTTPS, SOCKS5 proxies and integrate with Bright Data for changedetection.io
+---
+
+Changedetection.io supports comprehensive proxy configuration at both the system level and per-watch level. You can use standard HTTP/HTTPS proxies, SOCKS5 proxies, and integrate with premium proxy services like Bright Data and Oxylabs.
+
+## System-Level Proxy Configuration
+
+Set global proxy settings using environment variables. These apply to all watches unless overridden at the watch level.
+
+<ParamField path="HTTP_PROXY" type="string">
+  HTTP proxy URL for non-SSL requests
+  
+  **Example:**
+  ```bash
+  HTTP_PROXY=http://proxy.example.com:8080
+  ```
+</ParamField>
+
+<ParamField path="HTTPS_PROXY" type="string">
+  HTTPS proxy URL for SSL requests
+  
+  **Example:**
+  ```bash
+  HTTPS_PROXY=https://proxy.example.com:8443
+  ```
+</ParamField>
+
+<ParamField path="NO_PROXY" type="string">
+  Comma-separated list of domains/IPs to exclude from proxy
+  
+  **Example:**
+  ```bash
+  NO_PROXY="localhost,192.168.0.0/24,example.local"
+  ```
+  
+  Useful for excluding notification URLs and internal services from proxying.
+</ParamField>
+
+### Docker Compose Example
+
+```yaml
+services:
+  changedetection:
+    image: ghcr.io/dgtlmoon/changedetection.io
+    environment:
+      - HTTP_PROXY=socks5h://10.10.1.10:1080
+      - HTTPS_PROXY=socks5h://10.10.1.10:1080
+      - NO_PROXY="localhost,192.168.0.0/24"
+    volumes:
+      - changedetection-data:/datastore
+    ports:
+      - 127.0.0.1:5000:5000
+```
+
+## SOCKS5 Proxy Support
+
+Changedetection.io supports SOCKS5 proxies for the basic HTTP fetcher (requests library).
+
+### SOCKS5 with Authentication
+
+```bash
+HTTP_PROXY=socks5://user:pass@host:port
+HTTPS_PROXY=socks5://user:pass@host:port
+```
+
+### SOCKS5 DNS Resolution
+
+Use `socks5h://` to perform DNS resolution through the proxy:
+
+```bash
+HTTP_PROXY=socks5h://10.10.1.10:1080
+HTTPS_PROXY=socks5h://10.10.1.10:1080
+```
+
+<Warning>
+  **Playwright/Puppeteer Limitation:** SOCKS5 with authentication is not yet supported for browser-based fetchers (Playwright/Puppeteer). You can use SOCKS5 without authentication or use HTTP/HTTPS proxies with authentication instead.
+</Warning>
+
+## Per-Watch Proxy Configuration
+
+Configure proxies for individual watches through the web UI or API.
+
+### Using proxies.json
+
+Create a `proxies.json` file in your datastore directory to define reusable proxy profiles:
+
+```json
+[
+  {
+    "proxy_name": "proxy1",
+    "proxy_url": "http://proxy1.example.com:8080"
+  },
+  {
+    "proxy_name": "socks5proxy",
+    "proxy_url": "socks5://user:pass@socks5.example.com:1080"
+  },
+  {
+    "proxy_name": "brightdata-residential",
+    "proxy_url": "http://customer-USER-zone-ZONE:PASS@brd.superproxy.io:22225"
+  }
+]
+```
+
+### Mount proxies.json in Docker
+
+```yaml
+services:
+  changedetection:
+    image: ghcr.io/dgtlmoon/changedetection.io
+    volumes:
+      - changedetection-data:/datastore
+      - ./proxies.json:/datastore/proxies.json
+```
+
+### Select Proxy in Watch Settings
+
+Once defined in `proxies.json`, proxies appear in the watch edit page:
+
+1. Edit a watch
+2. Go to the **Request** tab
+3. Select your proxy from the **Proxy** dropdown
+4. Save the watch
+
+## Bright Data Proxy Integration
+
+Changedetection.io supports [Bright Data](https://brightdata.grsm.io/n0r16zf7eivq) (formerly Luminati) proxy services. Bright Data will match any first deposit up to $150 using our signup link.
+
+### Bright Data Configuration
+
+<ParamField path="proxy_url" type="string">
+  Bright Data proxy URL with zone and credentials
+  
+  **Format:**
+  ```
+  http://customer-USERNAME-zone-ZONENAME:PASSWORD@brd.superproxy.io:22225
+  ```
+  
+  **Example:**
+  ```json
+  {
+    "proxy_name": "brightdata-residential",
+    "proxy_url": "http://customer-myuser-zone-residential:mypass123@brd.superproxy.io:22225"
+  }
+  ```
+</ParamField>
+
+### Bright Data Proxy Types
+
+- **Residential** - Port 22225 (rotating residential IPs)
+- **Datacenter** - Port 22225 (datacenter IPs)
+- **Mobile** - Port 22225 (mobile carrier IPs)
+- **ISP** - Port 22225 (ISP-assigned IPs)
+
+Refer to [Bright Data documentation](https://help.brightdata.com/hc/en-us/articles/12632549957649-Proxy-Manager-How-to-Guides) for detailed configuration.
+
+### Authentication with Playwright/Puppeteer
+
+For browser-based fetchers (Playwright/Puppeteer), proxy authentication is handled automatically via the `page.authenticate()` method when credentials are present in the proxy URL:
+
+```javascript
+await page.authenticate({
+  username: 'customer-myuser-zone-residential',
+  password: 'mypass123'
+});
+```
+
+<Note>
+  The deprecated `Proxy-Authentication` header approach is no longer used. Modern browsers handle authentication via the CDP (Chrome DevTools Protocol) `authenticate()` method.
+</Note>
+
+## Playwright and WebDriver Proxy Settings
+
+When using browser-based fetchers, additional proxy configuration options are available.
+
+### Playwright Proxy Environment Variables
+
+<ParamField path="playwright_proxy_server" type="string">
+  Proxy server URL for Playwright
+  
+  **Example:**
+  ```bash
+  playwright_proxy_server=http://proxy.example.com:8080
+  ```
+</ParamField>
+
+<ParamField path="playwright_proxy_bypass" type="string">
+  Comma-separated domains to bypass proxy
+  
+  **Example:**
+  ```bash
+  playwright_proxy_bypass=*.example.com,localhost
+  ```
+</ParamField>
+
+<ParamField path="playwright_proxy_username" type="string">
+  Proxy authentication username for Playwright
+</ParamField>
+
+<ParamField path="playwright_proxy_password" type="string">
+  Proxy authentication password for Playwright
+</ParamField>
+
+### WebDriver/Selenium Proxy Settings
+
+<ParamField path="webdriver_proxyType" type="string">
+  Proxy type: `MANUAL`, `PAC`, `DIRECT`, `AUTODETECT`, `SYSTEM`
+</ParamField>
+
+<ParamField path="webdriver_ftpProxy" type="string">
+  FTP proxy address
+</ParamField>
+
+<ParamField path="webdriver_noProxy" type="string">
+  Addresses that should bypass the proxy
+</ParamField>
+
+<ParamField path="webdriver_proxyAutoconfigUrl" type="string">
+  URL for proxy auto-config (PAC) file
+</ParamField>
+
+<ParamField path="webdriver_autodetect" type="boolean">
+  Whether to autodetect proxy settings
+</ParamField>
+
+<ParamField path="webdriver_socksProxy" type="string">
+  SOCKS proxy address and port
+</ParamField>
+
+<ParamField path="webdriver_socksUsername" type="string">
+  SOCKS proxy username
+</ParamField>
+
+<ParamField path="webdriver_socksPassword" type="string">
+  SOCKS proxy password
+</ParamField>
+
+<ParamField path="webdriver_socksVersion" type="integer">
+  SOCKS version (4 or 5)
+</ParamField>
+
+Refer to [Selenium proxy documentation](https://selenium-python.readthedocs.io/api.html#module-selenium.webdriver.common.proxy) for more details.
+
+## Oxylabs Proxy Integration
+
+Changedetection.io also supports [Oxylabs](https://oxylabs.go2cloud.org/SH2d) proxy services, offering Residential, ISP, Rotating and many other proxy types.
+
+### Oxylabs Configuration Example
+
+```json
+{
+  "proxy_name": "oxylabs-residential",
+  "proxy_url": "http://customer-USERNAME:PASSWORD@pr.oxylabs.io:7777"
+}
+```
+
+## Troubleshooting
+
+### Proxy Connection Failed
+
+If you see `Proxy connection failed? SOCKSHTTPSConnectionPool` errors:
+
+1. Verify the proxy URL format is correct
+2. Check that the proxy server is accessible from your changedetection.io container
+3. Test the proxy with curl:
+   ```bash
+   curl -x socks5://user:pass@host:port https://example.com
+   ```
+
+### DNS Resolution Issues
+
+If you need DNS to be resolved through the proxy (e.g., for accessing internal hostnames), use `socks5h://` instead of `socks5://`:
+
+```bash
+HTTPS_PROXY=socks5h://proxy:1080  # DNS through proxy
+HTTPS_PROXY=socks5://proxy:1080   # DNS locally
+```
+
+### Proxy Not Working with Playwright
+
+For Playwright/Puppeteer fetchers:
+
+1. Ensure the proxy doesn't require SOCKS5 authentication (not yet supported)
+2. Use HTTP/HTTPS proxies with authentication instead
+3. Check the container can reach the proxy server
+
+## Best Practices
+
+1. **Use per-watch proxies** for sites that block datacenter IPs
+2. **Rotate proxies** by creating multiple proxy profiles
+3. **Set NO_PROXY** to exclude notification services and local resources
+4. **Test proxies** before deploying to production
+5. **Monitor proxy usage** through your proxy provider's dashboard
+
+## Related Documentation
+
+- [Environment Variables](/configuration/environment-variables) - All system environment variables
+- [Notifications Setup](/configuration/notifications-setup) - Configure NO_PROXY for notification URLs
+- [API Documentation](https://changedetection.io/docs/api_v1/index.html) - Programmatic proxy configuration

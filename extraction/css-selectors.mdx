@@ -1,0 +1,373 @@
+---
+title: CSS Selectors
+description: Extract specific content from web pages using CSS selectors
+---
+
+CSS selectors allow you to target specific HTML elements on a page for monitoring. This is one of the most common and user-friendly methods for content extraction.
+
+## How CSS Selectors Work
+
+CSS selectors use the same syntax as CSS stylesheets to identify HTML elements. When you apply a CSS selector as a filter, changedetection.io extracts only the matching elements and monitors them for changes.
+
+**Key Benefits:**
+- Familiar syntax if you know CSS
+- Visual selector tool available in browser mode
+- Multiple selectors can be combined
+- Works with any HTML content
+
+## Basic Selector Syntax
+
+### Element Selectors
+
+```css
+p
+```
+Selects all `<p>` (paragraph) elements.
+
+### ID Selectors
+
+```css
+#price
+```
+Selects the element with `id="price"`.
+
+### Class Selectors
+
+```css
+.product-title
+```
+Selects all elements with `class="product-title"`.
+
+### Attribute Selectors
+
+```css
+[data-price]
+```
+Selects elements with a `data-price` attribute.
+
+```css
+[href*="product"]
+```
+Selects elements where `href` contains "product".
+
+## Practical Examples
+
+### Monitor Product Prices
+
+<CodeGroup>
+```css HTML Structure
+<div class="product">
+  <h2 class="product-name">Gaming Laptop</h2>
+  <span class="price">$1,299.99</span>
+  <div class="description">...</div>
+</div>
+```
+
+```css CSS Filter
+.price
+```
+
+```text Output
+$1,299.99
+```
+</CodeGroup>
+
+### Monitor Multiple Elements
+
+<Tabs>
+  <Tab title="Separate Lines">
+    You can monitor multiple elements by entering each selector on a new line:
+    
+    ```css
+    .product-title
+    .price
+    .availability
+    ```
+    
+    Each matching element will appear on a separate line in the output.
+  </Tab>
+  
+  <Tab title="Combined Selector">
+    Or combine selectors with commas:
+    
+    ```css
+    .product-title, .price, .availability
+    ```
+    
+    This achieves the same result as separate lines.
+  </Tab>
+</Tabs>
+
+### Extract Specific Table Data
+
+```css
+table.pricing tr:nth-child(2) td.amount
+```
+
+This selects the amount cell in the second row of a pricing table.
+
+### Monitor Article Headlines
+
+```css
+article h1, article h2.subtitle
+```
+
+Extracts the main headline and subtitle from article elements.
+
+## Combining Multiple Filters
+
+You can use multiple CSS selectors together to create powerful filters:
+
+<Accordion title="Example: E-commerce Product Monitoring">
+```css
+.product-name
+#product-price
+[data-stock-status]
+.reviews-summary
+```
+
+This configuration monitors:
+- Product name (by class)
+- Product price (by ID)
+- Stock status (by data attribute)
+- Review summary (by class)
+
+Each element will be extracted and monitored independently.
+</Accordion>
+
+<Accordion title="Example: News Article Tracking">
+```css
+article.main h1
+article.main .byline
+article.main .publish-date
+article.main .content > p:first-of-type
+```
+
+Monitors the headline, author, date, and first paragraph of news articles.
+</Accordion>
+
+## Advanced Techniques
+
+### Pseudo-selectors
+
+```css
+li.item:not(.sold-out)
+```
+Selects items that are NOT sold out.
+
+```css
+.product:first-child
+```
+Selects only the first product.
+
+```css
+input[type="text"]
+```
+Selects all text input elements.
+
+### Child and Descendant Selectors
+
+```css
+div.container > p
+```
+Direct children only (immediate `<p>` elements).
+
+```css
+div.container p
+```
+All descendants (any `<p>` within the container).
+
+### Combining Selectors
+
+```css
+div#main .content p.highlight
+```
+Very specific: paragraphs with class "highlight" inside elements with class "content" inside a div with id "main".
+
+## Removing Unwanted Elements
+
+Use the **"Remove elements"** field to exclude parts of the selected content:
+
+<CodeGroup>
+```css Include Filter
+.article-body
+```
+
+```css Remove Filter
+.advertisement
+.related-articles
+script
+```
+</CodeGroup>
+
+This monitors the article body while removing ads, related articles, and scripts.
+
+## Testing CSS Selectors
+
+### Using Browser DevTools
+
+1. Right-click on the element you want to monitor
+2. Select "Inspect" or "Inspect Element"
+3. In the DevTools console, test your selector:
+   ```javascript
+   document.querySelectorAll('.your-selector')
+   ```
+4. Verify it returns the elements you expect
+
+### Using the Visual Selector
+
+When using browser-based fetching (Playwright/WebDriver):
+
+1. Navigate to the **Visual Selector** tab in your watch settings
+2. Click on elements directly on the page
+3. The CSS selector is automatically generated
+4. Preview the extracted content in real-time
+
+## Common Patterns
+
+### Pattern: Monitor Specific Divs
+```css
+#content
+```
+*Use case:* Main content area of a page.
+
+### Pattern: Track List Items
+```css
+ul.products > li
+```
+*Use case:* Product listings, search results.
+
+### Pattern: Monitor Data Attributes
+```css
+[data-product-id="12345"]
+```
+*Use case:* Elements with specific data attributes.
+
+### Pattern: Extract Meta Information
+```css
+meta[property="og:price:amount"]
+```
+*Use case:* Open Graph meta tags for structured data.
+
+## Common Pitfalls
+
+<Warning>
+**Pitfall #1: Selector Too Generic**
+
+```css
+div
+```
+This will match ALL divs on the page, which is usually too much content.
+
+**Better:** Be more specific
+```css
+div.product-info
+```
+</Warning>
+
+<Warning>
+**Pitfall #2: Relying on Position**
+
+```css
+div:nth-child(3)
+```
+Page structure might change, breaking your selector.
+
+**Better:** Use classes or IDs
+```css
+div.price-container
+```
+</Warning>
+
+<Warning>
+**Pitfall #3: Not Testing First**
+
+Always test your selector in browser DevTools before adding it to changedetection.io. Make sure it returns exactly what you expect.
+</Warning>
+
+## When to Use CSS Selectors
+
+<Check>**Good for:**</Check>
+- Monitoring specific sections of HTML pages
+- Tracking product prices and availability
+- Following article content changes
+- Extracting structured HTML content
+- When you need a visual selector tool
+
+<Check>**Not ideal for:**</Check>
+- JSON APIs (use [JSON filtering](/extraction/json-filtering) instead)
+- Complex XML documents (consider [XPath](/extraction/xpath))
+- PDF files (see [PDF monitoring](/extraction/pdf-monitoring))
+- When you need advanced conditional logic (use [XPath](/extraction/xpath))
+
+## CSS vs XPath
+
+| Feature | CSS Selectors | XPath |
+|---------|---------------|-------|
+| Syntax | Familiar to web developers | More powerful but complex |
+| Visual selector | ✅ Available | ❌ Not available |
+| Text extraction | Element-based | Can extract text nodes directly |
+| Conditional logic | Limited | Advanced (contains, not, etc.) |
+| Parent selection | ❌ Not possible | ✅ Can select parents |
+| Best for | HTML content | XML, RSS, complex queries |
+
+## Debugging Tips
+
+### Check What's Being Extracted
+
+1. Run a check on your watch
+2. View the **Preview** tab to see extracted content
+3. Adjust your selector if needed
+4. Run another check to verify
+
+### Selector Returns Nothing
+
+- Verify the element exists on the page
+- Check if the page requires JavaScript (switch to browser-based fetching)
+- Ensure the class/ID names are correct (they may have changed)
+- Try a less specific selector
+
+### Extracting Too Much Content
+
+- Make your selector more specific
+- Add class or ID constraints
+- Use child selectors (`>`) instead of descendant selectors
+- Use the "Remove elements" filter to exclude unwanted parts
+
+## Real-World Examples
+
+<Accordion title="Example: Monitor Reddit Post Title">
+```css
+shreddit-post h1
+```
+Extracts the title from Reddit posts.
+</Accordion>
+
+<Accordion title="Example: Track GitHub Stars">
+```css
+#repo-stars-counter-star
+```
+Monitors the star count on a GitHub repository.
+</Accordion>
+
+<Accordion title="Example: Follow Tweet Content">
+```css
+[data-testid="tweetText"]
+```
+Extracts tweet text from Twitter/X.
+</Accordion>
+
+<Accordion title="Example: Monitor Job Listings">
+```css
+.job-listing
+.job-title
+.salary-range
+```
+Tracks new job postings with title and salary information.
+</Accordion>
+
+## Related Topics
+
+- [XPath Selectors](/extraction/xpath) - More powerful alternative for complex scenarios
+- [JSON Filtering](/extraction/json-filtering) - Extract data from JSON APIs
+- [Testing and Debugging](/extraction/css-selectors) - Best practices for testing selectors

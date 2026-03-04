@@ -1,0 +1,196 @@
+---
+title: Authentication
+description: Learn how to authenticate with the changedetection.io API
+---
+
+# API Authentication
+
+Almost all API requests require authentication using an **API key**. The API key is passed in the HTTP header of each request.
+
+## Finding Your API Key
+
+You can find your API key in the changedetection.io dashboard:
+
+1. Navigate to **Settings** in the main menu
+2. Click on the **API** tab
+3. Your API key will be displayed - click it to copy to clipboard
+
+<Frame>
+  <img src="/images/where-to-get-api-key.jpeg" alt="Location of API key in Settings" />
+</Frame>
+
+<Warning>
+Keep your API key secret! Anyone with your API key can control your changedetection.io instance.
+</Warning>
+
+## Enabling/Disabling API Access
+
+You can enable or disable API access in the Settings > API section:
+
+- When **API Access Token Enabled** is checked, all API requests require a valid API key
+- When unchecked, API requests will work without authentication (not recommended for production)
+
+## Using the API Key
+
+The API key is passed via the `x-api-key` header in every request:
+
+```http
+x-api-key: YOUR_API_KEY
+```
+
+### Example Requests
+
+<CodeGroup>
+```bash cURL
+curl -X GET "http://localhost:5000/api/v1/watch" \
+  -H "x-api-key: YOUR_API_KEY"
+```
+
+```python Python
+import requests
+
+headers = {
+    "x-api-key": "YOUR_API_KEY"
+}
+
+response = requests.get(
+    "http://localhost:5000/api/v1/watch",
+    headers=headers
+)
+print(response.json())
+```
+
+```javascript JavaScript
+const API_KEY = 'YOUR_API_KEY';
+const BASE_URL = 'http://localhost:5000/api/v1';
+
+const response = await fetch(`${BASE_URL}/watch`, {
+  headers: {
+    'x-api-key': API_KEY
+  }
+});
+
+const watches = await response.json();
+console.log(watches);
+```
+</CodeGroup>
+
+## Authentication Errors
+
+If authentication fails, you'll receive a **403 Forbidden** response:
+
+```json
+"Invalid access - API key invalid."
+```
+
+### Common Issues
+
+<AccordionGroup>
+  <Accordion title="403 Forbidden - Invalid API key">
+    **Cause**: The API key is incorrect or has been regenerated.
+    
+    **Solution**: 
+    - Verify you're using the correct API key from Settings > API
+    - Check for extra whitespace or newlines in your API key
+    - If you regenerated the key, update it in your application
+  </Accordion>
+
+  <Accordion title="403 Forbidden - API access disabled">
+    **Cause**: API access token is disabled in settings.
+    
+    **Solution**: 
+    - Go to Settings > API
+    - Enable "API Access Token Enabled"
+  </Accordion>
+
+  <Accordion title="Missing x-api-key header">
+    **Cause**: The request doesn't include the `x-api-key` header.
+    
+    **Solution**: 
+    - Ensure the header is named exactly `x-api-key` (case-insensitive)
+    - Check that your HTTP client is sending custom headers
+  </Accordion>
+</AccordionGroup>
+
+## Security Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Use Environment Variables" icon="code">
+    Store your API key in environment variables, not in source code:
+    
+    ```python
+    import os
+    API_KEY = os.environ.get('CHANGEDETECTION_API_KEY')
+    ```
+  </Card>
+
+  <Card title="Use HTTPS" icon="lock">
+    Always use HTTPS in production to prevent API key interception:
+    
+    ```
+    https://yourdomain.com/api/v1/watch
+    ```
+  </Card>
+
+  <Card title="Rotate Keys Regularly" icon="rotate">
+    Regenerate your API key periodically, especially if:
+    - It may have been exposed
+    - Team members with access have left
+    - You're changing security policies
+  </Card>
+
+  <Card title="Restrict Access" icon="shield">
+    If using a reverse proxy:
+    - Limit API access to specific IP addresses
+    - Use firewall rules to control access
+    - Consider using VPN for remote access
+  </Card>
+</CardGroup>
+
+## Endpoints Without Authentication
+
+The following endpoints do **not** require authentication:
+
+- `GET /api/v1/full-spec` - Fetch the OpenAPI specification
+
+All other endpoints require a valid API key.
+
+## Testing Authentication
+
+To verify your API key is working:
+
+<CodeGroup>
+```bash cURL
+curl -X GET "http://localhost:5000/api/v1/systeminfo" \
+  -H "x-api-key: YOUR_API_KEY"
+```
+
+```python Python
+import requests
+
+headers = {"x-api-key": "YOUR_API_KEY"}
+response = requests.get(
+    "http://localhost:5000/api/v1/systeminfo",
+    headers=headers
+)
+
+if response.status_code == 200:
+    print("✓ Authentication successful!")
+    print(response.json())
+else:
+    print(f"✗ Authentication failed: {response.text}")
+```
+</CodeGroup>
+
+A successful response will return system information:
+
+```json
+{
+  "watch_count": 42,
+  "tag_count": 5,
+  "uptime": 172800.5,
+  "version": "0.50.10",
+  "queue_size": 3,
+  "overdue_watches": []
+}
+```

@@ -1,0 +1,497 @@
+---
+title: Selenium WebDriver Integration
+description: Legacy browser integration using Selenium and Chrome WebDriver
+---
+
+<Warning>
+Selenium WebDriver support is **deprecated** and not recommended for new installations. Use [Playwright](/browser/playwright) instead for better performance, full-page screenshots, HTTP status code reporting, and Browser Steps support.
+</Warning>
+
+## What Selenium WebDriver Provides
+
+Selenium WebDriver offers basic browser automation through the legacy WebDriver protocol:
+
+- **JavaScript Rendering** - Execute JavaScript and wait for content to load
+- **Basic Screenshots** - Viewport-only PNG screenshots (no full-page capture)
+- **Chrome Browser** - Uses Selenium Standalone Chrome container
+- **XPath Element Data** - Extract structured data from page elements
+- **Proxy Support** - Basic proxy configuration via Chrome options
+
+## Limitations
+
+<Warning>
+Important limitations compared to Playwright:
+</Warning>
+
+- **No Browser Steps Support** - Cannot automate interactions like clicking or form filling
+- **No Full-Page Screenshots** - Only captures visible viewport, not entire scrollable page
+- **No Status Code Reporting** - Always reports 200 OK, regardless of actual HTTP response
+- **No Visual Selector** - Point-and-click element selection not available
+- **Limited Error Handling** - Cannot detect actual page load errors
+- **Single-Process Limitation** - Selenium hub allows only one concurrent browser by default
+- **Legacy Technology** - Based on older WebDriver protocol
+
+## Docker Configuration
+
+To use Selenium WebDriver, run a Selenium Standalone Chrome service alongside changedetection.io.
+
+### Using docker-compose.yml
+
+Uncomment the Selenium service in your `docker-compose.yml`:
+
+```yaml
+services:
+  changedetection:
+    image: ghcr.io/dgtlmoon/changedetection.io
+    environment:
+      # Connect to Selenium WebDriver service
+      - WEBDRIVER_URL=http://browser-selenium-chrome:4444/wd/hub
+    depends_on:
+      browser-selenium-chrome:
+        condition: service_started
+
+  # Selenium Standalone Chrome (deprecated)
+  browser-selenium-chrome:
+    hostname: browser-selenium-chrome
+    image: selenium/standalone-chrome:4
+    environment:
+      - VNC_NO_PASSWORD=1
+      - SCREEN_WIDTH=1920
+      - SCREEN_HEIGHT=1080
+      - SCREEN_DEPTH=24
+    volumes:
+      # Workaround to avoid browser crashing inside container
+      - /dev/shm:/dev/shm
+    restart: unless-stopped
+```
+
+### Docker Standalone
+
+If running without docker-compose:
+
+```bash
+# Start Selenium Chrome container
+docker run -d \
+  --name selenium-chrome \
+  -p 4444:4444 \
+  -v /dev/shm:/dev/shm \
+  -e SCREEN_WIDTH=1920 \
+  -e SCREEN_HEIGHT=1080 \
+  selenium/standalone-chrome:4
+
+# Start changedetection with WebDriver URL
+docker run -d \
+  --name changedetection \
+  -p 5000:5000 \
+  -e WEBDRIVER_URL=http://selenium-chrome:4444/wd/hub \
+  --link selenium-chrome \
+  ghcr.io/dgtlmoon/changedetection.io
+```
+
+## Environment Variables
+
+### Required Configuration
+
+**WEBDRIVER_URL** - HTTP URL to the Selenium hub
+```bash
+WEBDRIVER_URL=http://browser-selenium-chrome:4444/wd/hub
+```
+
+### Optional Configuration
+
+**WEBDRIVER_DELAY_BEFORE_CONTENT_READY** - Seconds to wait after page load (default: 5)
+```bash
+WEBDRIVER_DELAY_BEFORE_CONTENT_READY=5
+```
+
+**WEBDRIVER_PAGELOAD_TIMEOUT** - Seconds to wait for page load (default: 45)
+```bash
+WEBDRIVER_PAGELOAD_TIMEOUT=45
+```
+
+**CHROME_OPTIONS** - Chrome command-line arguments (multiline)
+```bash
+CHROME_OPTIONS="
+--window-size=1280,1024
+--headless
+--disable-gpu
+--disable-dev-shm-usage
+--no-sandbox
+"
+```
+
+**SCREENSHOT_QUALITY** - JPEG quality for converted screenshots (default: 72)
+```bash
+SCREENSHOT_QUALITY=72
+```
+
+### Proxy Configuration
+
+WebDriver uses Chrome proxy options with the `webdriver_` prefix:
+
+```bash
+# HTTP/HTTPS proxy
+webdriver_httpProxy=http://proxy.example.com:8080
+webdriver_httpsProxy=https://proxy.example.com:8080
+
+# SOCKS proxy
+webdriver_socksProxy=socks5://proxy.example.com:1080
+webdriver_socksUsername=user
+webdriver_socksPassword=pass
+webdriver_socksVersion=5
+
+# FTP proxy
+webdriver_ftpProxy=ftp://proxy.example.com:21
+
+# Proxy bypass
+webdriver_noProxy=localhost,127.0.0.1,.example.com
+
+# Proxy type
+webdriver_proxyType=manual  # or: direct, pac, autodetect, system
+
+# PAC URL
+webdriver_proxyAutoconfigUrl=http://proxy.example.com/proxy.pac
+```
+
+## When to Use Selenium WebDriver
+
+<Warning>
+In almost all cases, you should use [Playwright](/browser/playwright) instead.
+</Warning>
+
+Consider Selenium only if:
+
+- You already have Selenium infrastructure deployed
+- You need compatibility with existing Selenium-based workflows
+- You're migrating from an older changedetection.io version that used Selenium
+
+**For new installations, use Playwright** for:
+- Full-page screenshots
+- HTTP status code detection  
+- Browser Steps automation
+- Better performance
+- Active development and support
+
+## JavaScript Rendering
+
+Selenium executes JavaScript on the page with basic waiting:
+
+### Custom JavaScript Execution
+
+```javascript
+// Example: Wait and click element
+document.querySelector('.load-more').click();
+
+// Scroll to bottom
+window.scrollTo(0, document.body.scrollHeight);
+```
+
+Set in watch configuration under **"Execute JavaScript before page extraction"**.
+
+### Render Delays
+
+Selenium waits using `implicitly_wait()`:
+
+1. Navigate to page
+2. Wait for initial DOM load
+3. Wait `WEBDRIVER_DELAY_BEFORE_CONTENT_READY` seconds
+4. Execute custom JavaScript (if configured)
+5. Wait another `WEBDRIVER_DELAY_BEFORE_CONTENT_READY` seconds
+6. Capture content
+
+<Note>
+Selenium's waiting is less sophisticated than Playwright's network idle detection.
+</Note>
+
+## Screenshots
+
+### Screenshot Limitations
+
+Selenium screenshots have significant limitations:
+
+- **Viewport Only** - Only captures what's visible in browser window
+- **No Scrolling** - Cannot capture content below the fold
+- **Fixed Size** - Screenshot size matches window size (1280x1024 default)
+- **PNG Only** - Captures as PNG, then converts to JPEG if requested
+- **No Stitching** - No automatic full-page capture
+
+### Screenshot Formats
+
+**PNG** (native format)
+- Lossless quality
+- Larger file size
+- No conversion overhead
+
+**JPEG** (converted from PNG)
+- Smaller file size
+- Quality loss from conversion
+- Uses `SCREENSHOT_QUALITY` setting
+- RGB conversion handles transparency
+
+### Window Sizing
+
+Control screenshot size via `CHROME_OPTIONS`:
+
+```bash
+CHROME_OPTIONS="--window-size=1920,1080"
+```
+
+Or set at runtime (default if not specified):
+```python
+driver.set_window_size(1280, 1024)
+```
+
+<Warning>
+Since Selenium only captures the viewport, tall pages will be cropped. Use Playwright for full-page screenshots.
+</Warning>
+
+## Performance Considerations
+
+### Resource Usage
+
+**Memory**
+- Selenium hub: ~500MB base
+- Chrome browser: ~200-400MB per instance  
+- Screenshots: ~2-10MB (viewport only)
+
+**CPU**
+- Page rendering
+- JavaScript execution
+- Screenshot PNG encoding
+- JPEG conversion (if using JPEG format)
+
+**Limitations**
+- Default Selenium standalone allows only **1 concurrent session**
+- Need Selenium Grid for multiple concurrent browsers
+- Slower startup than Playwright
+
+### Speed Comparison
+
+| Fetcher | Typical Speed | JavaScript | Full Screenshots |
+|---------|--------------|------------|------------------|
+| HTTP Requests | 100ms | No | No |
+| Playwright | 2-5s | Yes | Yes |
+| Selenium WebDriver | 5-10s | Yes | No |
+
+## Troubleshooting
+
+### Connection Issues
+
+```bash
+# Check Selenium service is running
+docker ps | grep selenium
+
+# Test WebDriver hub
+curl http://browser-selenium-chrome:4444/wd/hub/status
+
+# Verify environment variable
+docker exec changedetection env | grep WEBDRIVER
+```
+
+### Browser Crashes
+
+If Chrome crashes inside the container:
+
+```yaml
+# Ensure /dev/shm volume is mounted
+volumes:
+  - /dev/shm:/dev/shm
+```
+
+Or add Chrome options:
+```bash
+CHROME_OPTIONS="
+--disable-dev-shm-usage
+--no-sandbox
+"
+```
+
+### Memory Issues
+
+```bash
+# Reduce browser memory usage
+CHROME_OPTIONS="
+--disable-dev-shm-usage
+--disable-gpu
+--disable-software-rasterizer
+"
+```
+
+### Timeout Errors
+
+```bash
+# Increase page load timeout
+WEBDRIVER_PAGELOAD_TIMEOUT=60
+
+# Increase content ready delay
+WEBDRIVER_DELAY_BEFORE_CONTENT_READY=10
+```
+
+### "Session already exists" Error
+
+Selenium standalone only allows one session at a time:
+
+```bash
+# Solution 1: Wait for previous session to complete
+# Solution 2: Deploy Selenium Grid for multiple sessions
+# Solution 3: Switch to Playwright (recommended)
+```
+
+## Migrating to Playwright
+
+If you're currently using Selenium, migrating to Playwright is straightforward:
+
+### Step 1: Update docker-compose.yml
+
+```yaml
+# Replace Selenium service with sockpuppetbrowser
+browser-sockpuppet-chrome:
+  hostname: browser-sockpuppet-chrome
+  image: dgtlmoon/sockpuppetbrowser:latest
+  cap_add:
+    - SYS_ADMIN
+  restart: unless-stopped
+  environment:
+    - SCREEN_WIDTH=1920
+    - SCREEN_HEIGHT=1024
+    - MAX_CONCURRENT_CHROME_PROCESSES=10
+```
+
+### Step 2: Update Environment Variables
+
+```yaml
+changedetection:
+  environment:
+    # Replace
+    # - WEBDRIVER_URL=http://browser-selenium-chrome:4444/wd/hub
+    # With:
+    - PLAYWRIGHT_DRIVER_URL=ws://browser-sockpuppet-chrome:3000
+```
+
+### Step 3: Restart Services
+
+```bash
+docker compose down
+docker compose up -d
+```
+
+### What You Gain
+
+- Full-page screenshots instead of viewport-only
+- Actual HTTP status codes (200, 404, 403, etc.)
+- Browser Steps automation support
+- Visual Selector tool
+- Better performance and reliability
+- Multiple concurrent browsers
+- Active development and updates
+
+### What Stays the Same
+
+- Custom JavaScript execution
+- XPath and CSS selectors
+- Proxy configuration (just change prefix)
+- Screenshot capture
+- Watch configuration
+
+## Comparison with Playwright
+
+| Feature | Selenium WebDriver | Playwright |
+|---------|-------------------|------------|
+| **JavaScript Rendering** | Yes | Yes |
+| **Full-Page Screenshots** | No (viewport only) | Yes |
+| **HTTP Status Codes** | No (always 200) | Yes |
+| **Browser Steps** | No | Yes |
+| **Visual Selector** | No | Yes |
+| **Screenshot Stitching** | No | Yes |
+| **Concurrent Sessions** | 1 (standalone) | 10+ |
+| **Performance** | Slow (5-10s) | Medium (2-5s) |
+| **Memory Usage** | High | Medium |
+| **Development Status** | Deprecated | Active |
+| **Recommended** | No | Yes |
+
+## Advanced Configuration
+
+### Custom Chrome Options
+
+Full list of supported Chrome arguments:
+
+```bash
+CHROME_OPTIONS="
+--window-size=1920,1080
+--headless
+--disable-gpu
+--no-sandbox
+--disable-dev-shm-usage
+--disable-software-rasterizer
+--disable-extensions
+--disable-background-networking
+--disable-sync
+--metrics-recording-only
+--disable-default-apps
+--mute-audio
+--no-first-run
+--disable-setuid-sandbox
+--hide-scrollbars
+--ignore-certificate-errors
+"
+```
+
+### Selenium Grid (Multi-Session)
+
+For concurrent browsers, use Selenium Grid instead of standalone:
+
+```yaml
+selenium-hub:
+  image: selenium/hub:4
+  ports:
+    - "4444:4444"
+
+chrome-node:
+  image: selenium/node-chrome:4
+  environment:
+    - SE_EVENT_BUS_HOST=selenium-hub
+    - SE_EVENT_BUS_PUBLISH_PORT=4442
+    - SE_EVENT_BUS_SUBSCRIBE_PORT=4443
+  volumes:
+    - /dev/shm:/dev/shm
+  depends_on:
+    - selenium-hub
+```
+
+Then connect:
+```bash
+WEBDRIVER_URL=http://selenium-hub:4444/wd/hub
+```
+
+### Remote Selenium Hub
+
+Connect to external Selenium services:
+
+```bash
+WEBDRIVER_URL=http://external-selenium.example.com:4444/wd/hub
+```
+
+## Why Selenium is Deprecated
+
+The Selenium WebDriver integration has several architectural limitations:
+
+1. **No Status Reporting** - WebDriver protocol doesn't expose HTTP response codes
+2. **Screenshot Limitations** - WebDriver API only supports viewport capture
+3. **Single Process** - Selenium standalone design limits concurrency
+4. **No Automation** - WebDriver protocol doesn't support Browser Steps workflow
+5. **Slower Performance** - Extra HTTP overhead compared to CDP-based protocols
+6. **Maintenance Burden** - Requires separate Selenium hub infrastructure
+
+Playwright uses the Chrome DevTools Protocol (CDP) directly, which provides:
+- Direct access to HTTP responses
+- Native full-page screenshot support  
+- WebSocket connection (lower latency)
+- Network event monitoring
+- Better automation APIs
+
+## Related Documentation
+
+- [Playwright](/browser/playwright) - Modern browser integration (recommended)
+- [Chrome Extension](/browser/chrome-extension) - Add watches from your browser
+- [Proxy Configuration](/configuration/proxy-setup) - Using proxies with WebDriver
+- [Browser Steps](/features/browser-steps) - Available only with Playwright

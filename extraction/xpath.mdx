@@ -1,0 +1,493 @@
+---
+title: XPath Selectors
+description: Use XPath expressions to extract content from HTML, XML, and RSS feeds
+---
+
+XPath (XML Path Language) is a powerful query language for selecting nodes from XML and HTML documents. It offers more advanced capabilities than CSS selectors, including text node extraction, parent selection, and complex conditional logic.
+
+## How XPath Works
+
+XPath uses path expressions to navigate through the hierarchical structure of XML/HTML documents. You can select elements, attributes, text nodes, and more using a syntax similar to file system paths.
+
+**Key Benefits:**
+- Extract text nodes directly (without HTML tags)
+- Navigate to parent elements
+- Use advanced conditional logic
+- Perfect for RSS/XML feeds
+- Support for regex matching
+
+## XPath Versions in changedetection.io
+
+changedetection.io supports two XPath implementations:
+
+<Tabs>
+  <Tab title="XPath 2.0/3.0 (Default)">
+    **Prefix:** `xpath:` (or no prefix for `//` syntax)
+    
+    **Engine:** elementpath library
+    
+    **Features:**
+    - XPath 2.0 and 3.0 support
+    - Better namespace handling
+    - Automatic default namespace support for RSS/Atom feeds
+    - Modern expression syntax
+    
+    **Example:**
+    ```xpath
+    xpath://div[@class='price']/text()
+    //title/text()
+    ```
+  </Tab>
+  
+  <Tab title="XPath 1.0">
+    **Prefix:** `xpath1:`
+    
+    **Engine:** lxml library
+    
+    **Features:**
+    - XPath 1.0 standard
+    - Requires `local-name()` for default namespaces
+    - Compatible with many online XPath testers
+    
+    **Example:**
+    ```xpath
+    xpath1://div[@class='price']/text()
+    xpath1://*[local-name()='title']/text()
+    ```
+  </Tab>
+</Tabs>
+
+## Basic XPath Syntax
+
+### Selecting Elements
+
+```xpath
+//div
+```
+Selects all `<div>` elements anywhere in the document.
+
+```xpath
+/html/body/div
+```
+Selects `<div>` elements that are direct children of `<body>`.
+
+### Selecting by Attributes
+
+```xpath
+//div[@class='price']
+```
+Selects divs with `class="price"`.
+
+```xpath
+//a[@href]
+```
+Selects all `<a>` elements that have an `href` attribute.
+
+### Extracting Text
+
+```xpath
+//h1/text()
+```
+Extracts the text content of `<h1>` elements (without HTML tags).
+
+```xpath
+//div[@id='content']//text()
+```
+Extracts all text within the content div.
+
+### Extracting Attributes
+
+```xpath
+//img/@src
+```
+Extracts the `src` attribute from all images.
+
+```xpath
+//meta[@property='og:price:amount']/@content
+```
+Extracts Open Graph price metadata.
+
+## Practical Examples
+
+### Monitor Product Price
+
+<CodeGroup>
+```html HTML Structure
+<div class="product">
+  <h2>Gaming Laptop</h2>
+  <span class="price" data-value="1299.99">$1,299.99</span>
+</div>
+```
+
+```xpath XPath Filter
+//span[@class='price']/text()
+```
+
+```text Output
+$1,299.99
+```
+</CodeGroup>
+
+### Extract Multiple Fields
+
+```xpath
+//div[@class='product']/h2/text()
+//span[@class='price']/text()
+//div[@class='stock']/text()
+```
+
+Each XPath expression on a new line extracts different fields.
+
+### Monitor RSS Feed Items
+
+<Tabs>
+  <Tab title="XPath 2.0/3.0">
+    Automatic default namespace handling:
+    
+    ```xpath
+    //item/title/text()
+    //item/description/text()
+    ```
+    
+    Works directly with RSS feeds without namespace handling.
+  </Tab>
+  
+  <Tab title="XPath 1.0">
+    Requires `local-name()` for elements in default namespace:
+    
+    ```xpath
+    xpath1://*[local-name()='item']/*[local-name()='title']/text()
+    xpath1://*[local-name()='item']/*[local-name()='description']/text()
+    ```
+  </Tab>
+</Tabs>
+
+## Advanced Techniques
+
+### Conditional Selection
+
+<Accordion title="Contains Text">
+```xpath
+//div[contains(text(), 'In Stock')]
+```
+Selects divs containing "In Stock" text.
+
+```xpath
+//h2[contains(@class, 'product')]/text()
+```
+Selects h2 elements where class contains "product".
+</Accordion>
+
+<Accordion title="Logical Operators">
+```xpath
+//div[@class='product' and @data-available='true']
+```
+Selects divs matching BOTH conditions.
+
+```xpath
+//span[@class='sale' or @class='discount']
+```
+Selects spans matching EITHER condition.
+
+```xpath
+//div[@class='item' and not(@class='hidden')]
+```
+Selects items that are NOT hidden.
+</Accordion>
+
+<Accordion title="Position-based Selection">
+```xpath
+//li[1]
+```
+Selects the first `<li>` element.
+
+```xpath
+//li[last()]
+```
+Selects the last `<li>` element.
+
+```xpath
+//li[position() > 2]
+```
+Selects all `<li>` elements after the second one.
+</Accordion>
+
+### Parent and Sibling Navigation
+
+```xpath
+//span[@class='price']/parent::div
+```
+Selects the parent div of the price span.
+
+```xpath
+//h2[@class='title']/following-sibling::p[1]
+```
+Selects the first paragraph following the title.
+
+```xpath
+//span[@class='label']/preceding-sibling::input
+```
+Selects input elements before the label.
+
+### Regular Expression Matching
+
+changedetection.io supports EXSLT regex functions:
+
+```xpath
+//div[re:match(text(), 'Price: \$\d+\.\d{2}')]
+```
+Matches divs with text matching the price pattern.
+
+```xpath
+//a[re:test(@href, 'product/\d+')]
+```
+Selects links where href matches the pattern.
+
+## Working with Namespaces
+
+### RSS/Atom Feeds
+
+<CodeGroup>
+```xml RSS Feed Example
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>My Feed</title>
+    <item>
+      <title>First Item</title>
+      <description>Item description</description>
+    </item>
+  </channel>
+</rss>
+```
+
+```xpath XPath (Default - Automatic)
+//item/title/text()
+//item/description/text()
+```
+
+```xpath XPath 1.0 (Manual)
+xpath1://*[local-name()='item']/*[local-name()='title']/text()
+```
+</CodeGroup>
+
+### Handling CDATA Sections
+
+Some RSS feeds wrap content in CDATA:
+
+```xml
+<description><![CDATA[<p>HTML content here</p>]]></description>
+```
+
+changedetection.io automatically processes CDATA sections. The XPath `//description/text()` will extract the content.
+
+## Combining Include and Remove Filters
+
+<CodeGroup>
+```xpath Include Filter
+//article[@class='main']
+```
+
+```xpath Remove Filter (Subtractive Selectors)
+xpath://div[@class='advertisement']
+xpath://aside[@class='sidebar']
+xpath://script
+```
+</CodeGroup>
+
+This extracts the main article while removing ads, sidebars, and scripts.
+
+<Note>
+Remove filters must use the `xpath:` or `xpath1:` prefix explicitly.
+</Note>
+
+## Testing XPath Expressions
+
+### Using Browser DevTools
+
+1. Open DevTools Console (F12)
+2. Use `$x()` to test XPath:
+   ```javascript
+   $x('//div[@class="price"]/text()')
+   ```
+3. Verify the results
+
+### Online XPath Testers
+
+- [XPath Tester](https://www.freeformatter.com/xpath-tester.html)
+- [Code Beautify XPath](https://codebeautify.org/Xpath-Tester)
+- Use sample HTML/XML to test expressions
+
+<Warning>
+Online testers typically use XPath 1.0. Use `xpath1:` prefix in changedetection.io for compatibility.
+</Warning>
+
+## Common Patterns
+
+### Pattern: Extract Plain Text
+```xpath
+//div[@id='content']//text()
+```
+*Use case:* Get all text without HTML tags.
+
+### Pattern: Monitor Table Data
+```xpath
+//table[@class='pricing']//tr[2]/td[3]/text()
+```
+*Use case:* Extract specific table cell (row 2, column 3).
+
+### Pattern: Get Meta Description
+```xpath
+//meta[@name='description']/@content
+```
+*Use case:* Extract page meta description.
+
+### Pattern: Track Stock Status
+```xpath
+//div[@class='availability' and contains(text(), 'In Stock')]
+```
+*Use case:* Check if "In Stock" appears.
+
+### Pattern: Extract Link URLs
+```xpath
+//a[@class='download']/@href
+```
+*Use case:* Get download link URLs.
+
+## Common Pitfalls
+
+<Warning>
+**Pitfall #1: Forgetting text()**
+
+```xpath
+//div[@class='price']
+```
+Returns the entire element with HTML tags.
+
+**Better:**
+```xpath
+//div[@class='price']/text()
+```
+Extracts just the text content.
+</Warning>
+
+<Warning>
+**Pitfall #2: Case Sensitivity**
+
+XPath is case-sensitive!
+
+```xpath
+//Div[@Class='Price']  # Wrong
+//div[@class='price']  # Correct
+```
+</Warning>
+
+<Warning>
+**Pitfall #3: Namespace Issues with RSS**
+
+If your XPath returns nothing from an RSS feed:
+
+**Problem:** Using XPath 1.0 without `local-name()`
+```xpath
+xpath1://item/title/text()  # May fail
+```
+
+**Solution 1:** Use default XPath (2.0/3.0)
+```xpath
+//item/title/text()  # Automatic namespace handling
+```
+
+**Solution 2:** Use `local-name()` with XPath 1.0
+```xpath
+xpath1://*[local-name()='item']/*[local-name()='title']/text()
+```
+</Warning>
+
+## When to Use XPath
+
+<Check>**Good for:**</Check>
+- Monitoring RSS/Atom feeds
+- Extracting text without HTML tags
+- Complex conditional filtering
+- Navigating to parent elements
+- XML documents
+- When you need regex matching
+- Extracting specific attributes
+
+<Check>**Not ideal for:**</Check>
+- JSON APIs (use [JSON filtering](/extraction/json-filtering) instead)
+- When CSS selectors are sufficient (simpler syntax)
+- When you want visual selector support
+
+## XPath vs CSS Selectors
+
+| Feature | XPath | CSS Selectors |
+|---------|-------|---------------|
+| Text extraction | `//div/text()` | Not possible |
+| Parent selection | `//span/parent::div` | Not possible |
+| Attribute extraction | `//@href` | Not directly |
+| Conditional logic | `[contains(@class, 'x')]` | Limited |
+| Visual selector | ❌ Not available | ✅ Available |
+| RSS/XML feeds | ✅ Excellent | ❌ Not suitable |
+| Learning curve | Steeper | Easier |
+
+## Real-World Examples
+
+<Accordion title="Example: Monitor Product Reviews">
+```xpath
+//div[@itemprop='aggregateRating']//span[@itemprop='ratingValue']/text()
+```
+Extracts structured rating data from product pages.
+</Accordion>
+
+<Accordion title="Example: Track News Headlines from RSS">
+```xpath
+//item/title/text()
+//item/pubDate/text()
+```
+Monitors RSS feed items for new headlines and dates.
+</Accordion>
+
+<Accordion title="Example: Extract JSON-LD Price">
+```xpath
+//script[@type='application/ld+json']/text()
+```
+Extracts JSON-LD structured data, which can then be filtered with JSON filters.
+</Accordion>
+
+<Accordion title="Example: Monitor Table Changes">
+```xpath
+//table[@class='data']//tr[position() > 1]/td[2]/text()
+```
+Extracts second column from all data rows (skipping header).
+</Accordion>
+
+<Accordion title="Example: Get All Links in a Section">
+```xpath
+//section[@id='downloads']//a/@href
+```
+Extracts all download link URLs from a specific section.
+</Accordion>
+
+## Debugging Tips
+
+### Returns Empty Results
+
+1. Check if you're using the right XPath version
+2. For RSS/XML, try switching between `xpath:` and `xpath1:`
+3. Use `local-name()` for namespaced elements
+4. Verify element exists (check browser's element inspector)
+5. Test in browser console: `$x('your-xpath-here')`
+
+### Returns Unexpected Content
+
+1. Add `/text()` to extract only text content
+2. Use `[1]` or `[last()]` to get specific positions
+3. Add more specific conditions with `[@attribute='value']`
+4. Check if you need `//` (any level) vs `/` (direct child)
+
+## Related Topics
+
+- [CSS Selectors](/extraction/css-selectors) - Simpler alternative for HTML content
+- [JSON Filtering](/extraction/json-filtering) - Extract data from JSON responses
+- [RSS Monitoring](/extraction/xpath) - Specific guide for RSS feeds

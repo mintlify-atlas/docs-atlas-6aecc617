@@ -1,0 +1,421 @@
+---
+title: Import
+description: Bulk import URLs for monitoring
+---
+
+# Bulk Import
+
+The import endpoint allows you to add multiple URLs for monitoring in a single request. This is ideal for initial setup or bulk migrations.
+
+## Import Watches
+
+<ParamField path="POST" type="endpoint">
+  /api/v1/import
+</ParamField>
+
+Import a list of URLs with optional shared configuration.
+
+### Request Body
+
+The request body should be **plain text** with one URL per line:
+
+```
+https://example.com
+https://example.org
+https://example.net
+```
+
+### Query Parameters
+
+#### Special Parameters
+
+<ParamField query="tag" type="string">
+  Tag name to apply to all imported watches
+</ParamField>
+
+<ParamField query="tag_uuids" type="string">
+  Comma-separated tag UUIDs to apply to imported watches
+</ParamField>
+
+<ParamField query="proxy" type="string">
+  Proxy configuration key to use for all imported watches
+</ParamField>
+
+<ParamField query="dedupe" type="boolean" default={true}>
+  Skip URLs that already exist in the system
+</ParamField>
+
+#### Configuration Parameters
+
+You can pass **any** watch configuration field as a query parameter. All parameters from the Watch schema are supported:
+
+<ParamField query="processor" type="string">
+  Processor mode: `text_json_diff` or `restock_diff`
+</ParamField>
+
+<ParamField query="fetch_backend" type="string">
+  Fetcher: `system`, `html_requests`, `html_webdriver`, `extra_browser_*`
+</ParamField>
+
+<ParamField query="paused" type="boolean">
+  Import watches in paused state
+</ParamField>
+
+<ParamField query="notification_urls" type="string">
+  Comma-separated notification URLs or JSON array format
+</ParamField>
+
+<ParamField query="time_between_check" type="string">
+  JSON object with check interval: `{"hours":1,"minutes":30}`
+</ParamField>
+
+<ParamField query="include_filters" type="string">
+  Comma-separated CSS/XPath selectors or JSON array
+</ParamField>
+
+### Type Conversion
+
+Query parameters are automatically converted to the correct type:
+
+| Type | Format | Example |
+|------|--------|----------|
+| **Boolean** | `true`, `false`, `1`, `0`, `yes`, `no` | `paused=true` |
+| **Array** | Comma-separated or JSON | `notification_urls=url1,url2` or `["url1","url2"]` |
+| **Object** | JSON format | `time_between_check={"hours":1}` |
+| **Number** | Integer or float | `webdriver_delay=5` |
+| **String** | Plain text | `title=My+Watch` |
+
+### Examples
+
+<CodeGroup>
+```bash Basic Import
+# Simple import with no configuration
+curl -X POST "http://localhost:5000/api/v1/import" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: text/plain" \
+  -d $'https://example.com\nhttps://example.org\nhttps://example.net'
+```
+
+```bash With Configuration
+# Import with processor and fetch backend
+curl -X POST "http://localhost:5000/api/v1/import?processor=restock_diff&fetch_backend=html_webdriver" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: text/plain" \
+  -d $'https://example.com\nhttps://example.org'
+```
+
+```bash With Tags
+# Import and assign to a tag
+curl -X POST "http://localhost:5000/api/v1/import?tag=production&paused=true" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: text/plain" \
+  -d $'https://example.com'
+```
+
+```python Python - Basic
+import requests
+
+headers = {
+    'x-api-key': 'YOUR_API_KEY',
+    'Content-Type': 'text/plain'
+}
+
+# List of URLs to import
+urls = '''https://example.com
+https://example.org
+https://example.net'''
+
+response = requests.post(
+    'http://localhost:5000/api/v1/import',
+    headers=headers,
+    data=urls
+)
+print(response.json())
+```
+
+```python Python - With Config
+import requests
+
+headers = {
+    'x-api-key': 'YOUR_API_KEY',
+    'Content-Type': 'text/plain'
+}
+
+# Configuration as query parameters
+params = {
+    'processor': 'restock_diff',
+    'fetch_backend': 'html_webdriver',
+    'paused': 'false',
+    'tag': 'production'
+}
+
+urls = '''https://example.com
+https://example.org'''
+
+response = requests.post(
+    'http://localhost:5000/api/v1/import',
+    headers=headers,
+    params=params,
+    data=urls
+)
+print(response.json())
+```
+</CodeGroup>
+
+### Response
+
+**Small imports (< 20 URLs)**: Returns **200 OK** with array of created UUIDs
+
+```json
+[
+  "095be615-a8ad-4c33-8e9c-c7612fbf6c9f",
+  "7c9e6b8d-f2a1-4e5c-9d3b-8a7f6e4c2d1a",
+  "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+]
+```
+
+**Large imports (≥ 20 URLs)**: Returns **202 Accepted** for background processing
+
+```json
+{
+  "status": "Importing 50 URLs in background",
+  "count": 50
+}
+```
+
+<Info>
+Imports with 20 or more URLs are processed in the background to avoid blocking the API. You'll receive a 202 status immediately.
+</Info>
+
+---
+
+## Advanced Import Scenarios
+
+### Import with JSON Configuration
+
+For complex configurations, use JSON objects in query parameters:
+
+```bash
+curl -X POST "http://localhost:5000/api/v1/import" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: text/plain" \
+  --data-urlencode 'time_between_check={"hours":2,"minutes":30}' \
+  --data-urlencode 'headers={"Authorization":"Bearer token"}' \
+  --data-urlencode 'notification_urls=["mailto:admin@example.com","discord://webhook/token"]' \
+  -d $'https://example.com'
+```
+
+### Import from File
+
+<CodeGroup>
+```bash cURL
+# Import URLs from a text file
+curl -X POST "http://localhost:5000/api/v1/import?tag=production" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: text/plain" \
+  --data-binary @urls.txt
+```
+
+```python Python
+import requests
+
+headers = {
+    'x-api-key': 'YOUR_API_KEY',
+    'Content-Type': 'text/plain'
+}
+
+params = {'tag': 'production'}
+
+with open('urls.txt', 'r') as f:
+    urls = f.read()
+
+response = requests.post(
+    'http://localhost:5000/api/v1/import',
+    headers=headers,
+    params=params,
+    data=urls
+)
+print(response.json())
+```
+</CodeGroup>
+
+### Import with Multiple Tags
+
+```python
+import requests
+
+headers = {
+    'x-api-key': 'YOUR_API_KEY',
+    'Content-Type': 'text/plain'
+}
+
+# Use tag_uuids for multiple tags
+params = {
+    'tag_uuids': '550e8400-e29b-41d4-a716-446655440000,330e8400-e29b-41d4-a716-446655440001',
+    'processor': 'text_json_diff'
+}
+
+urls = 'https://example.com\nhttps://example.org'
+
+response = requests.post(
+    'http://localhost:5000/api/v1/import',
+    headers=headers,
+    params=params,
+    data=urls
+)
+```
+
+### Import Product Monitors
+
+For e-commerce/product monitoring with the `restock_diff` processor:
+
+```bash
+curl -X POST "http://localhost:5000/api/v1/import?processor=restock_diff&fetch_backend=html_webdriver" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: text/plain" \
+  -d $'https://shop.example.com/product1\nhttps://shop.example.com/product2'
+```
+
+---
+
+## Deduplication
+
+By default, the import endpoint skips URLs that already exist (`dedupe=true`).
+
+### Disable Deduplication
+
+```bash
+curl -X POST "http://localhost:5000/api/v1/import?dedupe=false" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: text/plain" \
+  -d $'https://example.com\nhttps://example.com'  # Will create 2 watches
+```
+
+<Warning>
+Disabling deduplication allows importing the same URL multiple times, which can be useful for monitoring the same URL with different configurations.
+</Warning>
+
+---
+
+## Validation
+
+All URLs are validated before import:
+
+- Must use `http://`, `https://`, or `ftp://` protocol
+- Must be a valid URL format
+- Must not be empty or whitespace-only
+
+### Invalid URLs
+
+```bash
+# This will fail with 400 error
+curl -X POST "http://localhost:5000/api/v1/import" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: text/plain" \
+  -d $'invalid-url\nfile:///etc/passwd\n'
+```
+
+**Error Response:**
+```
+Invalid or unsupported URL - invalid-url
+```
+
+---
+
+## Configuration Options
+
+You can pass any of these watch configuration options as query parameters:
+
+<AccordionGroup>
+  <Accordion title="Basic Settings">
+    - `processor` - Change detection processor
+    - `fetch_backend` - Content fetcher
+    - `paused` - Import in paused state
+    - `notification_muted` - Mute notifications
+    - `method` - HTTP method (GET, POST, etc.)
+  </Accordion>
+
+  <Accordion title="Notification Settings">
+    - `notification_urls` - Notification endpoints
+    - `notification_title` - Custom notification title
+    - `notification_body` - Custom notification body
+    - `notification_format` - Format (text, html, etc.)
+    - `notification_screenshot` - Include screenshots
+  </Accordion>
+
+  <Accordion title="Content Filtering">
+    - `include_filters` - CSS/XPath to extract
+    - `subtractive_selectors` - CSS/XPath to remove
+    - `ignore_text` - Text patterns to ignore
+    - `trigger_text` - Required trigger patterns
+    - `text_should_not_be_present` - Alert if found
+  </Accordion>
+
+  <Accordion title="Advanced Options">
+    - `time_between_check` - Check interval
+    - `headers` - Custom HTTP headers
+    - `body` - HTTP request body
+    - `proxy` - Proxy configuration
+    - `browser_steps` - Browser automation steps
+    - `webdriver_delay` - Browser wait time
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Use Tags" icon="tags">
+    Always assign imported watches to tags for easier management:
+    ```
+    ?tag=imported-2024-01
+    ```
+  </Card>
+
+  <Card title="Start Paused" icon="pause">
+    Import in paused state to review before activating:
+    ```
+    ?paused=true
+    ```
+  </Card>
+
+  <Card title="Batch Size" icon="list">
+    For very large imports (100+ URLs), split into smaller batches to monitor progress.
+  </Card>
+
+  <Card title="Validate URLs" icon="check">
+    Clean and validate your URL list before import to avoid errors mid-import.
+  </Card>
+</CardGroup>
+
+---
+
+## Import from CSV
+
+If you have URLs in CSV format, extract the URL column first:
+
+```python
+import csv
+import requests
+
+# Read URLs from CSV
+with open('websites.csv', 'r') as f:
+    reader = csv.DictReader(f)
+    urls = [row['url'] for row in reader]
+
+# Import
+headers = {
+    'x-api-key': 'YOUR_API_KEY',
+    'Content-Type': 'text/plain'
+}
+
+response = requests.post(
+    'http://localhost:5000/api/v1/import',
+    headers=headers,
+    params={'tag': 'csv-import'},
+    data='\n'.join(urls)
+)
+
+print(f"Imported {len(response.json())} watches")
+```

@@ -1,0 +1,528 @@
+---
+title: Importing Watches
+description: Import website URLs from Excel, plaintext lists, or via API with automatic configuration
+---
+
+Changedetection.io provides multiple methods to import large lists of URLs, making it easy to migrate from other services or set up bulk monitoring.
+
+## Import Methods
+
+### Excel Import (Recommended)
+
+Import URLs from Excel `.xlsx` files with full configuration options:
+
+1. **Create Excel file** with columns:
+   - `URL` (required) - Website URL to monitor
+   - `Title` - Watch title/name
+   - `Tag` - Comma-separated tags
+   - `Fetch Backend` - `html_requests`, `playwright`, `webdriver`, etc.
+   - `Notification URLs` - Apprise notification URLs
+   - `Filters` - CSS/XPath selectors
+   - Any other watch configuration fields
+
+2. **Upload via Web UI:**
+   - Go to **Import** page
+   - Click **Choose File** and select your `.xlsx` file
+   - Click **Import**
+   - Review imported watches
+
+**Example Excel structure:**
+```
+| URL                           | Title          | Tag            | Fetch Backend |
+|-------------------------------|----------------|----------------|---------------|
+| https://example.com/product1  | Product 1      | prices,urgent  | html_requests |
+| https://example.com/product2  | Product 2      | prices         | playwright    |
+| https://api.example.com/data  | API Endpoint   | api,monitoring | html_requests |
+```
+
+<Note>
+  Excel import is recommended because it supports full configuration including tags, notifications, filters, and other watch settings.
+</Note>
+
+### Plaintext URL List
+
+Import a simple list of URLs (one per line):
+
+1. **Create text file** with URLs:
+   ```
+   https://example.com
+   https://another-site.com
+   https://api.example.com/endpoint
+   ```
+
+2. **Upload via Web UI:**
+   - Go to **Import** page
+   - Paste URLs into text area (one per line)
+   - Click **Import**
+
+3. **Upload via File:**
+   - Save URLs to `.txt` file
+   - Upload via **Import** page
+
+<Note>
+  Plaintext import creates watches with default settings. Configure individual watches after import.
+</Note>
+
+## API Import
+
+Programmatically import URLs using the REST API.
+
+### Basic API Import
+
+<ParamField path="POST /api/v1/watch/import" type="endpoint">
+  Import a list of URLs from plaintext
+  
+  **Request:**
+  ```bash
+  curl -X POST https://changedetection.example.com/api/v1/watch/import \
+    -H "Content-Type: text/plain" \
+    -H "x-api-key: YOUR_API_KEY" \
+    -d $'https://example.com\nhttps://another-site.com'
+  ```
+  
+  **Response (< 20 URLs):**
+  ```json
+  [
+    "uuid-1111-2222-3333-4444",
+    "uuid-5555-6666-7777-8888"
+  ]
+  ```
+  
+  **Response (≥ 20 URLs - background processing):**
+  ```json
+  {
+    "status": "Importing 50 URLs in background",
+    "count": 50
+  }
+  ```
+</ParamField>
+
+### Import with Configuration
+
+Use query parameters to configure imported watches:
+
+**Available parameters:**
+- `tag` - Assign tag(s) to all imported watches
+- `tag_uuids` - Comma-separated tag UUIDs
+- `dedupe` - Skip duplicate URLs (default: `true`)
+- `proxy` - Proxy name from `proxies.json`
+- Any watch configuration field (see below)
+
+**Example with tag:**
+```bash
+curl -X POST "https://changedetection.example.com/api/v1/watch/import?tag=imported,batch-2024" \
+  -H "Content-Type: text/plain" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d $'https://example.com\nhttps://another-site.com'
+```
+
+**Example with processor:**
+```bash
+curl -X POST "https://changedetection.example.com/api/v1/watch/import?processor=text_json_diff" \
+  -H "Content-Type: text/plain" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d $'https://api.example.com/data\nhttps://api.example.com/users'
+```
+
+**Example with fetch backend:**
+```bash
+curl -X POST "https://changedetection.example.com/api/v1/watch/import?fetch_backend=playwright" \
+  -H "Content-Type: text/plain" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d $'https://example.com\nhttps://another-site.com'
+```
+
+**Example with proxy:**
+```bash
+curl -X POST "https://changedetection.example.com/api/v1/watch/import?proxy=socks5proxy" \
+  -H "Content-Type: text/plain" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d $'https://example.com\nhttps://another-site.com'
+```
+
+### Advanced Configuration Parameters
+
+<ParamField path="tag" type="string">
+  Comma-separated tags to assign
+  
+  **Example:**
+  ```bash
+  ?tag=production,api,critical
+  ```
+</ParamField>
+
+<ParamField path="dedupe" type="boolean" default="true">
+  Skip URLs that already exist in watches
+  
+  **Example:**
+  ```bash
+  ?dedupe=false  # Allow duplicates
+  ```
+</ParamField>
+
+<ParamField path="proxy" type="string">
+  Proxy name from proxies.json
+  
+  **Example:**
+  ```bash
+  ?proxy=socks5proxy
+  ```
+  
+  Must match a `proxy_name` defined in your `proxies.json`.
+</ParamField>
+
+<ParamField path="processor" type="string">
+  Content processor type
+  
+  **Available processors:**
+  - `text_json_diff` - JSON API monitoring
+  - `restock_diff` - Product restock/price monitoring
+  - `text_content_diff` - Text-only comparison
+  
+  **Example:**
+  ```bash
+  ?processor=text_json_diff
+  ```
+</ParamField>
+
+<ParamField path="fetch_backend" type="string">
+  Content fetcher to use
+  
+  **Available fetchers:**
+  - `html_requests` - Fast HTTP client (default)
+  - `playwright` - Chrome browser via Playwright
+  - `webdriver` - Chrome browser via Selenium
+  - `system` - Use global default
+  
+  **Example:**
+  ```bash
+  ?fetch_backend=playwright
+  ```
+</ParamField>
+
+<ParamField path="notification_urls" type="array">
+  Notification URLs (comma-separated or JSON array)
+  
+  **Example (comma-separated):**
+  ```bash
+  ?notification_urls=discord://webhook_id/token,mailto://user:pass@smtp.gmail.com?to=alerts@example.com
+  ```
+  
+  **Example (JSON array):**
+  ```bash
+  ?notification_urls=["discord://webhook_id/token","mailto://alerts@example.com"]
+  ```
+</ParamField>
+
+<ParamField path="method" type="string" default="GET">
+  HTTP request method
+  
+  **Values:** `GET`, `POST`, `PUT`, `PATCH`, `DELETE`
+  
+  **Example:**
+  ```bash
+  ?method=POST
+  ```
+</ParamField>
+
+<ParamField path="headers" type="object">
+  Custom HTTP headers (JSON object)
+  
+  **Example:**
+  ```bash
+  ?headers={"Authorization":"Bearer token123","X-Custom":"value"}
+  ```
+</ParamField>
+
+<ParamField path="body" type="string">
+  HTTP request body (for POST/PUT/PATCH)
+  
+  **Example:**
+  ```bash
+  ?body={"key":"value"}
+  ```
+</ParamField>
+
+<ParamField path="time_between_check" type="object">
+  Check interval configuration (JSON object)
+  
+  **Format:**
+  ```json
+  {
+    "weeks": 0,
+    "days": 0,
+    "hours": 1,
+    "minutes": 0,
+    "seconds": 0
+  }
+  ```
+  
+  **Example:**
+  ```bash
+  ?time_between_check={"hours":6}
+  ```
+</ParamField>
+
+<ParamField path="include_filters" type="array">
+  CSS/XPath selectors to include (comma-separated)
+  
+  **Example:**
+  ```bash
+  ?include_filters=.price,.availability
+  ```
+</ParamField>
+
+<ParamField path="subtractive_selectors" type="array">
+  CSS/XPath selectors to exclude
+  
+  **Example:**
+  ```bash
+  ?subtractive_selectors=.ads,.footer
+  ```
+</ParamField>
+
+### Complete API Import Example
+
+```bash
+curl -X POST "https://changedetection.example.com/api/v1/watch/import?tag=api-monitoring&processor=text_json_diff&fetch_backend=html_requests&time_between_check={\"hours\":1}&notification_urls=discord://1234567890/token" \
+  -H "Content-Type: text/plain" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d $'https://api.example.com/v1/users\nhttps://api.example.com/v1/products\nhttps://api.example.com/v1/orders'
+```
+
+## Background Processing
+
+For large imports (20+ URLs), changedetection.io automatically switches to background processing:
+
+<ParamField path="IMPORT_SWITCH_TO_BACKGROUND_THRESHOLD" type="integer" default="20">
+  Number of URLs above which import switches to background processing
+  
+  **Behavior:**
+  - **< 20 URLs:** Synchronous import, immediate response with UUIDs
+  - **≥ 20 URLs:** Background thread, immediate HTTP 202 response
+  
+  **Response for background processing:**
+  ```json
+  {
+    "status": "Importing 50 URLs in background",
+    "count": 50
+  }
+  ```
+</ParamField>
+
+<Note>
+  Background imports are logged but don't return watch UUIDs immediately. Check the watch list or logs to verify import completion.
+</Note>
+
+## Import from File
+
+Import from a file on your local machine:
+
+### Using cURL
+
+```bash
+curl -X POST https://changedetection.example.com/api/v1/watch/import \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: text/plain" \
+  --data-binary @urls.txt
+```
+
+### Using Python
+
+```python
+import requests
+
+with open('urls.txt', 'r') as f:
+    urls = f.read()
+
+response = requests.post(
+    'https://changedetection.example.com/api/v1/watch/import',
+    headers={
+        'x-api-key': 'YOUR_API_KEY',
+        'Content-Type': 'text/plain'
+    },
+    data=urls
+)
+
+print(response.json())
+```
+
+### Using JavaScript/Node.js
+
+```javascript
+const fs = require('fs');
+const axios = require('axios');
+
+const urls = fs.readFileSync('urls.txt', 'utf-8');
+
+axios.post('https://changedetection.example.com/api/v1/watch/import', urls, {
+  headers: {
+    'x-api-key': 'YOUR_API_KEY',
+    'Content-Type': 'text/plain'
+  }
+})
+.then(response => console.log(response.data))
+.catch(error => console.error(error));
+```
+
+## Deduplication
+
+By default, changedetection.io skips URLs that already exist:
+
+<ParamField path="dedupe" type="boolean" default="true">
+  Skip duplicate URLs during import
+  
+  **Behavior:**
+  - `true` (default) - Skip URLs that already exist in watches
+  - `false` - Allow duplicate URLs (create multiple watches)
+  
+  **Example to allow duplicates:**
+  ```bash
+  curl -X POST "https://changedetection.example.com/api/v1/watch/import?dedupe=false" \
+    -H "Content-Type: text/plain" \
+    -H "x-api-key: YOUR_API_KEY" \
+    -d $'https://example.com\nhttps://example.com'
+  ```
+</ParamField>
+
+## URL Validation
+
+All imported URLs are validated:
+
+1. **Format validation**: Must be valid HTTP/HTTPS URLs
+2. **Security validation**: Private/reserved IPs blocked (unless `ALLOW_IANA_RESTRICTED_ADDRESSES=true`)
+3. **Protocol validation**: Only `http://`, `https://`, and `file://` (if enabled) are supported
+
+**Invalid URLs return 400 error:**
+```json
+{
+  "error": "Invalid or unsupported URL - ftp://example.com"
+}
+```
+
+## Proxy Assignment
+
+Assign proxies during import using the `proxy` parameter:
+
+**Prerequisites:**
+1. Create `proxies.json` in datastore directory
+2. Define proxy profiles:
+   ```json
+   [
+     {
+       "proxy_name": "proxy1",
+       "proxy_url": "http://proxy1.example.com:8080"
+     },
+     {
+       "proxy_name": "socks5proxy",
+       "proxy_url": "socks5://user:pass@proxy.example.com:1080"
+     }
+   ]
+   ```
+
+**Import with proxy:**
+```bash
+curl -X POST "https://changedetection.example.com/api/v1/watch/import?proxy=socks5proxy" \
+  -H "Content-Type: text/plain" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d $'https://example.com\nhttps://another-site.com'
+```
+
+**Error if proxy not found:**
+```json
+{
+  "error": "Invalid proxy choice, currently supported proxies are 'proxy1, socks5proxy'"
+}
+```
+
+## Batch Import Script
+
+Create a shell script to import URLs in batches:
+
+```bash
+#!/bin/bash
+
+API_KEY="your-api-key-here"
+BASE_URL="https://changedetection.example.com"
+URL_FILE="urls.txt"
+BATCH_SIZE=50
+
+# Split URLs into batches
+split -l $BATCH_SIZE "$URL_FILE" batch_
+
+# Import each batch
+for batch in batch_*; do
+  echo "Importing $batch..."
+  curl -X POST "$BASE_URL/api/v1/watch/import?tag=imported-$(date +%Y%m%d)" \
+    -H "Content-Type: text/plain" \
+    -H "x-api-key: $API_KEY" \
+    --data-binary @"$batch"
+  
+  echo ""
+  sleep 2  # Rate limit
+done
+
+# Cleanup
+rm batch_*
+echo "Import complete!"
+```
+
+## Troubleshooting
+
+### Import Fails with 400 Error
+
+**Cause:** Invalid URL format or unsupported protocol
+
+**Solution:**
+1. Check URL format: `https://example.com` (not `example.com`)
+2. Ensure protocol is HTTP/HTTPS
+3. Remove any leading/trailing whitespace
+4. Check for special characters that need URL encoding
+
+### Import Returns 400 "Invalid proxy choice"
+
+**Cause:** Proxy name doesn't exist in `proxies.json`
+
+**Solution:**
+1. Verify `proxies.json` exists in datastore
+2. Check `proxy_name` matches exactly (case-sensitive)
+3. Restart changedetection.io after modifying `proxies.json`
+
+### Background Import Not Completing
+
+**Cause:** Resource constraints or invalid URLs in batch
+
+**Solution:**
+1. Check Docker logs: `docker logs changedetection`
+2. Look for error messages about specific URLs
+3. Reduce batch size
+4. Check available disk space and memory
+
+### Duplicates Created Despite dedupe=true
+
+**Cause:** URL normalization differences (trailing slash, query params)
+
+**Solution:**
+1. Normalize URLs before import (add/remove trailing slashes consistently)
+2. Consider using `dedupe=false` and cleaning up manually
+3. Use API to check for duplicates first
+
+## Best Practices
+
+1. **Use Excel import** for initial setup with full configuration
+2. **Test with small batch** (5-10 URLs) before importing thousands
+3. **Tag imports** by date or source for easier management
+4. **Enable deduplication** to avoid duplicate watches
+5. **Validate URLs** before import using a script
+6. **Monitor logs** during large imports
+7. **Import during low-traffic** periods
+8. **Backup datastore** before large imports
+9. **Use background processing** for large batches (20+ URLs)
+10. **Configure defaults** (processor, fetch_backend) to reduce individual configuration
+
+## Related Documentation
+
+- [API Documentation](https://changedetection.io/docs/api_v1/index.html) - Complete API reference
+- [Proxy Setup](/configuration/proxy-setup) - Configure proxies for imported watches
+- [Notifications Setup](/configuration/notifications-setup) - Set up notifications during import
+- [Environment Variables](/configuration/environment-variables) - Import-related configuration

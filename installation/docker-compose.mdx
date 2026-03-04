@@ -1,0 +1,371 @@
+---
+title: "Docker Compose Installation"
+description: "Install changedetection.io using Docker Compose with browser automation"
+---
+
+Docker Compose provides the easiest way to run changedetection.io with optional browser automation support for JavaScript-heavy websites.
+
+## Quick Start
+
+<Steps>
+  <Step title="Clone or download the repository">
+    ```bash
+    git clone https://github.com/dgtlmoon/changedetection.io.git
+    cd changedetection.io
+    ```
+    
+    Alternatively, download just the `docker-compose.yml` file from the repository.
+  </Step>
+
+  <Step title="Start the service">
+    ```bash
+    docker compose up -d
+    ```
+  </Step>
+
+  <Step title="Access the web interface">
+    Open your browser and navigate to:
+    ```
+    http://127.0.0.1:5000
+    ```
+  </Step>
+</Steps>
+
+## Basic Configuration
+
+The default `docker-compose.yml` provides a minimal setup:
+
+```yaml docker-compose.yml
+services:
+  changedetection:
+    image: ghcr.io/dgtlmoon/changedetection.io
+    container_name: changedetection
+    hostname: changedetection
+    volumes:
+      - changedetection-data:/datastore
+    ports:
+      - 127.0.0.1:5000:5000
+    restart: unless-stopped
+
+volumes:
+  changedetection-data:
+```
+
+<Note>
+  Mac users should change the port mapping to `127.0.0.1:5050:5000` to avoid conflicts with Airplay.
+</Note>
+
+## Environment Variables
+
+Uncomment and configure environment variables in your `docker-compose.yml`:
+
+```yaml docker-compose.yml
+services:
+  changedetection:
+    image: ghcr.io/dgtlmoon/changedetection.io
+    container_name: changedetection
+    hostname: changedetection
+    volumes:
+      - changedetection-data:/datastore
+    environment:
+      - PORT=5000
+      - LOGGER_LEVEL=INFO
+      - BASE_URL=https://mysite.com
+      - FETCH_WORKERS=10
+      - MINIMUM_SECONDS_RECHECK_TIME=3
+      - TZ=America/Los_Angeles
+    ports:
+      - 127.0.0.1:5000:5000
+    restart: unless-stopped
+
+volumes:
+  changedetection-data:
+```
+
+### Key Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PORT` | `5000` | Web interface listening port |
+| `LOGGER_LEVEL` | `DEBUG` | TRACE, DEBUG, INFO, SUCCESS, WARNING, ERROR, CRITICAL |
+| `BASE_URL` | - | Base URL for notification links |
+| `FETCH_WORKERS` | `10` | Number of concurrent fetchers |
+| `MINIMUM_SECONDS_RECHECK_TIME` | `3` | Minimum recheck interval (0 to disable) |
+| `TZ` | - | Timezone for scheduling (e.g., `America/Los_Angeles`) |
+| `LC_ALL` | `en_US.UTF-8` | Text processing locale |
+| `DISABLE_VERSION_CHECK` | `false` | Disable version check/telemetry |
+| `HIDE_REFERER` | `false` | Hide referer header from monitored sites |
+
+### Reverse Proxy Configuration
+
+```yaml
+environment:
+  - USE_X_SETTINGS=1
+  - BASE_URL=https://mysite.com
+```
+
+<Note>
+  When using a reverse proxy, set `USE_X_SETTINGS=1` to respect `X-Forwarded-Prefix` and similar headers.
+</Note>
+
+### Proxy Configuration
+
+```yaml
+environment:
+  - HTTP_PROXY=socks5h://10.10.1.10:1080
+  - HTTPS_PROXY=socks5h://10.10.1.10:1080
+  - NO_PROXY="localhost,192.168.0.0/24"
+```
+
+### Plugin Installation
+
+```yaml
+environment:
+  - EXTRA_PACKAGES=changedetection.io-osint-processor
+```
+
+For multiple plugins, separate with spaces:
+```yaml
+environment:
+  - EXTRA_PACKAGES=changedetection.io-osint-processor another-plugin
+```
+
+## Browser Automation Setup
+
+For JavaScript-heavy websites, add browser automation using Playwright (recommended) or Selenium.
+
+### Option 1: Playwright with Sockpuppet Browser (Recommended)
+
+```yaml docker-compose.yml
+services:
+  changedetection:
+    image: ghcr.io/dgtlmoon/changedetection.io
+    container_name: changedetection
+    hostname: changedetection
+    volumes:
+      - changedetection-data:/datastore
+    environment:
+      - PLAYWRIGHT_DRIVER_URL=ws://browser-sockpuppet-chrome:3000
+    ports:
+      - 127.0.0.1:5000:5000
+    restart: unless-stopped
+    depends_on:
+      browser-sockpuppet-chrome:
+        condition: service_started
+
+  browser-sockpuppet-chrome:
+    hostname: browser-sockpuppet-chrome
+    image: dgtlmoon/sockpuppetbrowser:latest
+    cap_add:
+      - SYS_ADMIN
+    restart: unless-stopped
+    environment:
+      - SCREEN_WIDTH=1920
+      - SCREEN_HEIGHT=1024
+      - SCREEN_DEPTH=16
+      - MAX_CONCURRENT_CHROME_PROCESSES=10
+
+volumes:
+  changedetection-data:
+```
+
+<Note>
+  Sockpuppet Browser provides the best performance and supports full-page screenshots and the Visual Selector feature.
+</Note>
+
+<Warning>
+  The `SYS_ADMIN` capability is required for Chrome to run in some environments. See the [Puppeteer troubleshooting guide](https://github.com/puppeteer/puppeteer/blob/main/docs/troubleshooting.md#running-puppeteer-on-gitlabci) for alternatives.
+</Warning>
+
+### Option 2: Selenium WebDriver (Legacy)
+
+```yaml docker-compose.yml
+services:
+  changedetection:
+    image: ghcr.io/dgtlmoon/changedetection.io
+    container_name: changedetection
+    hostname: changedetection
+    volumes:
+      - changedetection-data:/datastore
+    environment:
+      - WEBDRIVER_URL=http://browser-selenium-chrome:4444/wd/hub
+    ports:
+      - 127.0.0.1:5000:5000
+    restart: unless-stopped
+    depends_on:
+      browser-selenium-chrome:
+        condition: service_started
+
+  browser-selenium-chrome:
+    hostname: browser-selenium-chrome
+    image: selenium/standalone-chrome:4
+    environment:
+      - VNC_NO_PASSWORD=1
+      - SCREEN_WIDTH=1920
+      - SCREEN_HEIGHT=1080
+      - SCREEN_DEPTH=24
+    volumes:
+      - /dev/shm:/dev/shm
+    restart: unless-stopped
+
+volumes:
+  changedetection-data:
+```
+
+<Warning>
+  Selenium WebDriver is deprecated and doesn't support full-page screenshots or status codes. Use Playwright/Sockpuppet Browser for new installations.
+</Warning>
+
+## Advanced Volume Configuration
+
+### Proxy List Support
+
+Mount a custom proxy configuration file:
+
+```yaml
+volumes:
+  - changedetection-data:/datastore
+  - ./proxies.json:/datastore/proxies.json
+```
+
+See the [proxy configuration wiki](https://github.com/dgtlmoon/changedetection.io/wiki/Proxy-configuration#proxy-list-support) for format details.
+
+### SSL Certificate Mounting
+
+```yaml
+volumes:
+  - changedetection-data:/datastore
+  - ./cert.pem:/app/cert.pem
+  - ./privkey.pem:/app/privkey.pem
+environment:
+  - SSL_CERT_FILE=cert.pem
+  - SSL_PRIVKEY_FILE=privkey.pem
+```
+
+## Updating
+
+<Steps>
+  <Step title="Pull the latest images">
+    ```bash
+    docker compose pull
+    ```
+  </Step>
+
+  <Step title="Restart services">
+    ```bash
+    docker compose up -d
+    ```
+  </Step>
+</Steps>
+
+Docker Compose will automatically recreate containers with updated images while preserving your data.
+
+## Network Configuration
+
+### Behind a Reverse Proxy
+
+Comment out the `ports` section and use a custom network:
+
+```yaml
+services:
+  changedetection:
+    image: ghcr.io/dgtlmoon/changedetection.io
+    container_name: changedetection
+    volumes:
+      - changedetection-data:/datastore
+    environment:
+      - USE_X_SETTINGS=1
+      - BASE_URL=https://changedetection.example.com
+    networks:
+      - proxy-network
+    restart: unless-stopped
+
+networks:
+  proxy-network:
+    external: true
+
+volumes:
+  changedetection-data:
+```
+
+## Troubleshooting
+
+### Services won't start
+
+Check logs for all services:
+```bash
+docker compose logs
+```
+
+Or for a specific service:
+```bash
+docker compose logs changedetection
+```
+
+### Browser automation not working
+
+Verify the browser service is running:
+```bash
+docker compose ps
+```
+
+Check browser service logs:
+```bash
+docker compose logs browser-sockpuppet-chrome
+```
+
+Ensure the `PLAYWRIGHT_DRIVER_URL` or `WEBDRIVER_URL` environment variable is set correctly.
+
+### Permission issues
+
+Reset volume permissions:
+```bash
+docker compose down
+docker volume rm changedetection-data
+docker compose up -d
+```
+
+<Warning>
+  Removing the volume will delete all data. Back up your datastore first.
+</Warning>
+
+### Port conflicts on Mac
+
+Change the port mapping to avoid Airplay conflicts:
+```yaml
+ports:
+  - 127.0.0.1:5050:5000
+```
+
+### Out of memory errors with browser
+
+Increase Docker memory limits or reduce concurrent Chrome processes:
+```yaml
+browser-sockpuppet-chrome:
+  environment:
+    - MAX_CONCURRENT_CHROME_PROCESSES=5
+```
+
+## Platform-Specific Notes
+
+### Raspberry Pi / ARM Devices
+
+For ARM platforms, use the appropriate Selenium image:
+```yaml
+browser-selenium-chrome:
+  image: seleniarm/standalone-chromium:4.0.0-20211213
+```
+
+Playwright/Sockpuppet Browser also works on ARM64 devices.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Configuration" icon="gear" href="/configuration/environment-variables">
+    Configure notifications and advanced features
+  </Card>
+  
+  <Card title="Browser Fetchers" icon="chrome" href="/browser/playwright">
+    Learn about different fetching methods
+  </Card>
+</CardGroup>

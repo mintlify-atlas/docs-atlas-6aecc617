@@ -1,0 +1,519 @@
+---
+title: Custom Fetchers
+description: Understanding the content fetcher architecture and creating custom fetchers for specialized monitoring needs
+---
+
+Content fetchers are responsible for retrieving web page content in changedetection.io. The application includes three built-in fetchers, each optimized for different scenarios.
+
+## Built-in Fetchers
+
+<CardGroup cols={3}>
+  <Card title="requests" icon="bolt">
+    Fast HTTP client for static pages
+  </Card>
+  <Card title="playwright" icon="browser">
+    Full browser with JavaScript support
+  </Card>
+  <Card title="puppeteer" icon="chrome">
+    Alternative browser automation (legacy)
+  </Card>
+</CardGroup>
+
+## Fetcher Architecture
+
+All fetchers inherit from the `Fetcher` base class and implement a standard interface:
+
+```python content_fetchers/base.py
+class Fetcher:
+    """Base class for all content fetchers"""
+    
+    browser_steps = None
+    browser_steps_screenshot_path = None
+    content = None
+    error = None
+    fetcher_description = "No description"
+    headers = {}
+    instock_data = None
+    screenshot = None
+    status_code = None
+    
+    def __init__(self, **kwargs):
+        """Initialize fetcher with configuration"""
+        pass
+    
+    def run(self, url, timeout, request_headers, request_body, request_method="GET",
+            ignore_status_codes=False, current_include_filters=None):
+        """
+        Fetch content from URL.
+        
+        Returns:
+            - self.content: Retrieved content (HTML, JSON, etc.)
+            - self.headers: Response headers
+            - self.status_code: HTTP status code
+            - self.screenshot: Screenshot bytes (if supported)
+            - self.error: Error message (if any)
+        """
+        raise NotImplementedError()
+    
+    def quit(self):
+        """Clean up resources (close browser, etc.)"""
+        pass
+```
+
+## requests Fetcher (HTTP Client)
+
+The simplest and fastest fetcher using the Python requests library.
+
+### Features
+
+- Fast HTTP/HTTPS requests
+- Cookie support
+- Custom headers and authentication
+- Proxy support (HTTP, HTTPS, SOCKS5)
+- File:// URL support
+- Brotli compression
+
+### When to Use
+
+- Static HTML pages without JavaScript
+- API endpoints returning JSON/XML
+- Pages that don't require authentication
+- Maximum performance needed
+- Low resource consumption required
+
+### Implementation Highlights
+
+From `content_fetchers/requests.py`:
+
+```python
+import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+
+class fetcher(Fetcher):
+    fetcher_description = "Basic fast Plaintext/HTTP Client"
+    
+    def run(self, url, timeout, request_headers, request_body, 
+            request_method="GET", **kwargs):
+        # Configure retries
+        retry_strategy = Retry(
+            total=3,
+            status_forcelist=[429, 500, 502, 503, 504],
+            backoff_factor=1
+        )
+        
+        # Setup session with retries
+        session = requests.Session()
+        adapter = HTTPAdapter(max_retries=retry_strategy)
+        session.mount("http://", adapter)
+        session.mount("https://", adapter)
+        
+        # Make request
+        r = session.request(
+            method=request_method,
+            url=url,
+            headers=request_headers,
+            data=request_body,
+            timeout=timeout,
+            verify=True
+        )
+        
+        # Store results
+        self.content = r.text
+        self.headers = dict(r.headers)
+        self.status_code = r.status_code
+        
+        return
+```
+
+### Configuration
+
+```python Watch Configuration
+{
+  "fetch_backend": "html_requests",
+  "headers": {
+    "User-Agent": "Custom Agent",
+    "Accept": "application/json"
+  },
+  "method": "POST",
+  "body": "param=value"
+}
+```
+
+## playwright Fetcher (Browser)
+
+Full-featured browser automation using Playwright. Recommended for JavaScript-heavy sites.
+
+### Features
+
+- JavaScript execution
+- Browser Steps support (click, type, wait)
+- Visual Selector integration
+- Full-page screenshots
+- Cookie and localStorage handling
+- Network interception
+- Multi-browser support (Chromium, Firefox, WebKit)
+
+### When to Use
+
+- Single Page Applications (SPAs)
+- JavaScript-rendered content
+- Pages requiring login/authentication
+- Interactive pages with dynamic loading
+- Screenshot monitoring needed
+- Visual Selector required
+
+### Implementation Highlights
+
+From `content_fetchers/playwright.py`:
+
+```python
+import playwright
+from playwright.sync_api import sync_playwright
+import multiprocessing
+
+def _run_playwright(url, timeout, headers, screenshot_path, user_agent):
+    """Run Playwright in isolated process"""
+    with sync_playwright() as p:
+        # Launch browser
+        browser = p.chromium.connect(
+            playwright_driver_url,
+            timeout=timeout * 1000
+        )
+        
+        # Create context with custom settings
+        context = browser.new_context(
+            user_agent=user_agent,
+            viewport={'width': 1920, 'height': 1080},
+            extra_http_headers=headers
+        )
+        
+        # Open page
+        page = context.new_page()
+        page.goto(url, wait_until='networkidle', timeout=timeout * 1000)
+        
+        # Execute Browser Steps if configured
+        if browser_steps:
+            execute_browser_steps(page, browser_steps)
+        
+        # Get content and screenshot
+        content = page.content()
+        if screenshot_path:
+            page.screenshot(path=screenshot_path, full_page=True)
+        
+        return content
+
+class fetcher(Fetcher):
+    fetcher_description = "Playwright Chrome"
+    
+    def run(self, url, timeout, request_headers, **kwargs):
+        # Run in separate process for isolation
+        ctx = multiprocessing.get_context('spawn')
+        queue = ctx.Queue()
+        
+        process = ctx.Process(
+            target=_run_playwright,
+            args=(url, timeout, request_headers, queue)
+        )
+        process.start()
+        process.join(timeout=timeout + 5)
+        
+        # Get results
+        self.content = queue.get()
+        return
+```
+
+### Configuration
+
+```python Watch Configuration
+{
+  "fetch_backend": "html_webdriver",
+  "browser_steps": [
+    {"operation": "goto", "url": "https://example.com/login"},
+    {"operation": "type", "selector": "#username", "value": "user"},
+    {"operation": "click", "selector": "#submit"},
+    {"operation": "wait", "seconds": 2}
+  ],
+  "webdriver_screenshot": true
+}
+```
+
+## Creating a Custom Fetcher
+
+### Step 1: Create Fetcher File
+
+Create a new file in `content_fetchers/`:
+
+```python content_fetchers/my_custom_fetcher.py
+from .base import Fetcher
+import requests
+
+class fetcher(Fetcher):
+    fetcher_description = "My Custom Fetcher"
+    
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        # Initialize custom settings
+        self.api_key = kwargs.get('api_key')
+    
+    def run(self, url, timeout, request_headers, request_body,
+            request_method="GET", ignore_status_codes=False,
+            current_include_filters=None, **kwargs):
+        """
+        Fetch content with custom logic.
+        """
+        try:
+            # Your custom fetching logic
+            response = self.fetch_with_custom_method(url)
+            
+            # Store results in standard format
+            self.content = response['content']
+            self.headers = response.get('headers', {})
+            self.status_code = response.get('status_code', 200)
+            
+            # Optional: store custom data
+            self.instock_data = response.get('metadata')
+            
+        except Exception as e:
+            self.error = str(e)
+            self.status_code = 500
+    
+    def fetch_with_custom_method(self, url):
+        """Implement your custom fetching logic"""
+        # Example: use special API or protocol
+        return {
+            'content': '<html>Custom content</html>',
+            'headers': {},
+            'status_code': 200
+        }
+    
+    def quit(self):
+        """Clean up resources"""
+        # Close connections, browsers, etc.
+        pass
+```
+
+### Step 2: Register Fetcher
+
+The fetcher is automatically discovered if placed in `content_fetchers/` directory. Update `__init__.py` if needed:
+
+```python content_fetchers/__init__.py
+available_fetchers = {
+    'html_requests': 'Basic fast Plaintext/HTTP Client',
+    'html_webdriver': 'Playwright Chrome',
+    'my_custom_fetcher': 'My Custom Fetcher'
+}
+```
+
+### Step 3: Use Custom Fetcher
+
+```bash API Example
+curl -X POST http://localhost:5000/api/v1/watch \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://example.com",
+    "fetch_backend": "my_custom_fetcher"
+  }'
+```
+
+## Advanced Fetcher Examples
+
+### API Client Fetcher
+
+Fetcher that authenticates with an API:
+
+```python
+class fetcher(Fetcher):
+    fetcher_description = "Authenticated API Client"
+    
+    def __init__(self, **kwargs):
+        self.api_token = os.getenv('API_TOKEN')
+    
+    def run(self, url, timeout, request_headers, **kwargs):
+        # Add authentication
+        headers = request_headers.copy()
+        headers['Authorization'] = f'Bearer {self.api_token}'
+        
+        # Make authenticated request
+        r = requests.get(url, headers=headers, timeout=timeout)
+        
+        self.content = r.text
+        self.headers = dict(r.headers)
+        self.status_code = r.status_code
+```
+
+### RSS/Atom Feed Fetcher
+
+Specialized fetcher for feed parsing:
+
+```python
+import feedparser
+
+class fetcher(Fetcher):
+    fetcher_description = "RSS/Atom Feed Parser"
+    
+    def run(self, url, timeout, **kwargs):
+        # Parse feed
+        feed = feedparser.parse(url)
+        
+        # Convert to consistent format
+        items = []
+        for entry in feed.entries:
+            items.append({
+                'title': entry.title,
+                'link': entry.link,
+                'published': entry.published,
+                'summary': entry.summary
+            })
+        
+        # Store as JSON
+        import json
+        self.content = json.dumps(items, indent=2)
+        self.status_code = 200 if feed.entries else 404
+```
+
+### WebSocket Fetcher
+
+Fetcher for WebSocket connections:
+
+```python
+import websocket
+import json
+
+class fetcher(Fetcher):
+    fetcher_description = "WebSocket Client"
+    
+    def run(self, url, timeout, **kwargs):
+        messages = []
+        
+        def on_message(ws, message):
+            messages.append(message)
+        
+        def on_error(ws, error):
+            self.error = str(error)
+        
+        # Connect and collect messages
+        ws = websocket.WebSocketApp(
+            url,
+            on_message=on_message,
+            on_error=on_error
+        )
+        
+        ws.run_forever(timeout=timeout)
+        
+        # Store collected messages
+        self.content = '\n'.join(messages)
+        self.status_code = 200 if messages else 500
+```
+
+## Best Practices
+
+### Resource Management
+
+- Always implement `quit()` to clean up resources
+- Use context managers for file handles and connections
+- Close browser instances in Playwright/Selenium fetchers
+- Set reasonable timeouts
+
+### Error Handling
+
+```python
+def run(self, url, timeout, **kwargs):
+    try:
+        # Fetching logic
+        pass
+    except requests.Timeout:
+        self.error = f"Timeout after {timeout}s"
+        self.status_code = 408
+    except requests.ConnectionError:
+        self.error = "Connection failed"
+        self.status_code = 503
+    except Exception as e:
+        self.error = f"Unexpected error: {str(e)}"
+        self.status_code = 500
+```
+
+### Performance
+
+- Use `requests` for static content (10-100x faster than browsers)
+- Only use browser fetchers when JavaScript is required
+- Implement caching for expensive operations
+- Use connection pooling for multiple requests
+- Set appropriate timeouts (default: 60s)
+
+### Security
+
+- Validate and sanitize URLs
+- Respect robots.txt (unless monitoring your own sites)
+- Implement rate limiting for external APIs
+- Never log sensitive data (API keys, passwords)
+- Use environment variables for credentials
+
+## When to Extend vs Configure
+
+### Extend (Create Custom Fetcher) When:
+
+- Need custom authentication mechanism
+- Require special protocol support (WebSocket, gRPC, etc.)
+- Want to integrate with proprietary APIs
+- Need specialized parsing or transformation
+- Performance optimization for specific use case
+
+### Configure (Use Built-in Fetcher) When:
+
+- Standard HTTP/HTTPS requests sufficient
+- JavaScript rendering needed (use Playwright)
+- Browser automation required (use Playwright with Browser Steps)
+- Custom headers/cookies needed (use requests with headers)
+- Proxy configuration needed (use built-in proxy support)
+
+## Testing Your Fetcher
+
+Create a test file:
+
+```python tests/test_my_fetcher.py
+import pytest
+from changedetectionio.content_fetchers.my_custom_fetcher import fetcher
+
+def test_basic_fetch():
+    f = fetcher()
+    f.run(
+        url="https://example.com",
+        timeout=30,
+        request_headers={},
+        request_body=None
+    )
+    
+    assert f.status_code == 200
+    assert f.content is not None
+    assert f.error is None
+
+def test_error_handling():
+    f = fetcher()
+    f.run(
+        url="https://invalid.domain.that.does.not.exist",
+        timeout=5,
+        request_headers={},
+        request_body=None
+    )
+    
+    assert f.error is not None
+    assert f.status_code != 200
+```
+
+Run tests:
+```bash
+pytest tests/test_my_fetcher.py -v
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Processors" icon="microchip" href="/advanced/processors">
+    Learn about change detection processors
+  </Card>
+  <Card title="Browser Steps" icon="robot" href="/features/browser-steps">
+    Master browser automation
+  </Card>
+</CardGroup>

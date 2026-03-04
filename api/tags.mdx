@@ -1,0 +1,485 @@
+---
+title: Tags
+description: Organize watches with tags and groups
+---
+
+# Tag Management
+
+Tags (also called Groups) allow you to organize your watches, set group-wide notification preferences, and perform bulk operations on related watches.
+
+## List All Tags
+
+<ParamField path="GET" type="endpoint">
+  /api/v1/tags
+</ParamField>
+
+Retrieve a list of all tags/groups.
+
+### Response Fields
+
+<ResponseField name="uuid" type="string">
+  Unique identifier for the tag
+</ResponseField>
+
+<ResponseField name="title" type="string">
+  Tag name/title
+</ResponseField>
+
+<ResponseField name="date_created" type="integer">
+  Unix timestamp of creation
+</ResponseField>
+
+<ResponseField name="notification_muted" type="boolean">
+  Whether notifications are muted for this tag
+</ResponseField>
+
+### Example
+
+<CodeGroup>
+```bash cURL
+curl -X GET "http://localhost:5000/api/v1/tags" \
+  -H "x-api-key: YOUR_API_KEY"
+```
+
+```python Python
+import requests
+
+headers = {'x-api-key': 'YOUR_API_KEY'}
+response = requests.get(
+    'http://localhost:5000/api/v1/tags',
+    headers=headers
+)
+print(response.json())
+```
+</CodeGroup>
+
+<ResponseExample>
+```json
+{
+  "550e8400-e29b-41d4-a716-446655440000": {
+    "uuid": "550e8400-e29b-41d4-a716-446655440000",
+    "title": "Production Sites",
+    "date_created": 1640995200,
+    "notification_muted": false
+  },
+  "330e8400-e29b-41d4-a716-446655440001": {
+    "uuid": "330e8400-e29b-41d4-a716-446655440001",
+    "title": "News Sources",
+    "date_created": 1640998800,
+    "notification_muted": false
+  }
+}
+```
+</ResponseExample>
+
+---
+
+## Create a Tag
+
+<ParamField path="POST" type="endpoint">
+  /api/v1/tag
+</ParamField>
+
+Create a new tag/group.
+
+### Request Body
+
+<ParamField body="title" type="string" required>
+  Name for the tag/group
+</ParamField>
+
+<ParamField body="notification_urls" type="array">
+  Array of notification URLs (Apprise format) for this tag
+</ParamField>
+
+<ParamField body="notification_muted" type="boolean" default={false}>
+  Whether notifications are muted for watches in this tag
+</ParamField>
+
+<ParamField body="overrides_watch" type="boolean">
+  Whether tag settings override individual watch settings
+</ParamField>
+
+### Example
+
+<CodeGroup>
+```bash cURL
+curl -X POST "http://localhost:5000/api/v1/tag" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Important Sites"
+  }'
+```
+
+```python Python
+import requests
+
+headers = {
+    'x-api-key': 'YOUR_API_KEY',
+    'Content-Type': 'application/json'
+}
+data = {'title': 'Important Sites'}
+
+response = requests.post(
+    'http://localhost:5000/api/v1/tag',
+    headers=headers,
+    json=data
+)
+print(response.json())
+```
+</CodeGroup>
+
+<ResponseExample>
+```json
+{
+  "uuid": "550e8400-e29b-41d4-a716-446655440000"
+}
+```
+</ResponseExample>
+
+---
+
+## Get a Single Tag
+
+<ParamField path="GET" type="endpoint">
+  /api/v1/tag/{uuid}
+</ParamField>
+
+Retrieve information about a specific tag.
+
+### Path Parameters
+
+<ParamField path="uuid" type="string" required>
+  UUID of the tag
+</ParamField>
+
+### Query Parameters
+
+<ParamField query="muted" type="string">
+  Set to `"muted"` or `"unmuted"` to change notification mute state
+</ParamField>
+
+<ParamField query="recheck" type="string">
+  Set to `"true"` to recheck all watches in this tag
+</ParamField>
+
+### Example
+
+<CodeGroup>
+```bash cURL
+# Get tag info
+curl -X GET "http://localhost:5000/api/v1/tag/550e8400-e29b-41d4-a716-446655440000" \
+  -H "x-api-key: YOUR_API_KEY"
+
+# Recheck all watches in tag
+curl -X GET "http://localhost:5000/api/v1/tag/550e8400-e29b-41d4-a716-446655440000?recheck=true" \
+  -H "x-api-key: YOUR_API_KEY"
+
+# Mute tag notifications
+curl -X GET "http://localhost:5000/api/v1/tag/550e8400-e29b-41d4-a716-446655440000?muted=muted" \
+  -H "x-api-key: YOUR_API_KEY"
+```
+
+```python Python
+import requests
+
+headers = {'x-api-key': 'YOUR_API_KEY'}
+tag_uuid = '550e8400-e29b-41d4-a716-446655440000'
+
+# Get tag info
+response = requests.get(
+    f'http://localhost:5000/api/v1/tag/{tag_uuid}',
+    headers=headers
+)
+print(response.json())
+
+# Recheck all watches in tag
+response = requests.get(
+    f'http://localhost:5000/api/v1/tag/{tag_uuid}',
+    headers=headers,
+    params={'recheck': 'true'}
+)
+print(response.json())
+```
+</CodeGroup>
+
+<ResponseExample>
+```json
+{
+  "uuid": "550e8400-e29b-41d4-a716-446655440000",
+  "title": "Production Sites",
+  "date_created": 1640995200,
+  "notification_muted": false,
+  "notification_urls": ["mailto:admin@example.com"],
+  "overrides_watch": true
+}
+```
+</ResponseExample>
+
+<Info>
+When rechecking a tag with 20+ watches, the operation runs in the background and returns a 202 status code.
+</Info>
+
+---
+
+## Update a Tag
+
+<ParamField path="PUT" type="endpoint">
+  /api/v1/tag/{uuid}
+</ParamField>
+
+Update an existing tag. Only include fields you want to change.
+
+### Path Parameters
+
+<ParamField path="uuid" type="string" required>
+  UUID of the tag to update
+</ParamField>
+
+### Request Body
+
+<ParamField body="title" type="string">
+  Update the tag name
+</ParamField>
+
+<ParamField body="notification_urls" type="array">
+  Update notification URLs for this tag
+</ParamField>
+
+<ParamField body="notification_muted" type="boolean">
+  Update notification mute state
+</ParamField>
+
+<ParamField body="overrides_watch" type="boolean">
+  Whether tag settings override watch settings
+</ParamField>
+
+### Example
+
+<CodeGroup>
+```bash cURL
+curl -X PUT "http://localhost:5000/api/v1/tag/550e8400-e29b-41d4-a716-446655440000" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Updated Production Sites",
+    "notification_muted": false
+  }'
+```
+
+```python Python
+import requests
+
+headers = {
+    'x-api-key': 'YOUR_API_KEY',
+    'Content-Type': 'application/json'
+}
+tag_uuid = '550e8400-e29b-41d4-a716-446655440000'
+data = {
+    'title': 'Updated Production Sites',
+    'notification_muted': False
+}
+
+response = requests.put(
+    f'http://localhost:5000/api/v1/tag/{tag_uuid}',
+    headers=headers,
+    json=data
+)
+print(response.text)  # "OK"
+```
+</CodeGroup>
+
+<Warning>
+Updating a tag clears checksums for all watches using that tag, forcing them to reprocess on next check.
+</Warning>
+
+---
+
+## Delete a Tag
+
+<ParamField path="DELETE" type="endpoint">
+  /api/v1/tag/{uuid}
+</ParamField>
+
+Delete a tag and remove it from all watches.
+
+### Path Parameters
+
+<ParamField path="uuid" type="string" required>
+  UUID of the tag to delete
+</ParamField>
+
+### Example
+
+<CodeGroup>
+```bash cURL
+curl -X DELETE "http://localhost:5000/api/v1/tag/550e8400-e29b-41d4-a716-446655440000" \
+  -H "x-api-key: YOUR_API_KEY"
+```
+
+```python Python
+import requests
+
+headers = {'x-api-key': 'YOUR_API_KEY'}
+tag_uuid = '550e8400-e29b-41d4-a716-446655440000'
+
+response = requests.delete(
+    f'http://localhost:5000/api/v1/tag/{tag_uuid}',
+    headers=headers
+)
+print(response.status_code)  # 204
+```
+</CodeGroup>
+
+<Note>
+Deleting a tag removes it from all associated watches but does not delete the watches themselves.
+</Note>
+
+---
+
+## Tag Configuration Options
+
+Tags inherit all configuration options from the Watch schema, allowing you to set defaults that can override individual watch settings when `overrides_watch` is enabled.
+
+### Common Tag Settings
+
+<AccordionGroup>
+  <Accordion title="Notification Settings">
+    <ParamField body="notification_urls" type="array">
+      Array of Apprise notification URLs
+    </ParamField>
+    
+    <ParamField body="notification_title" type="string">
+      Custom notification title template
+    </ParamField>
+    
+    <ParamField body="notification_body" type="string">
+      Custom notification body template
+    </ParamField>
+    
+    <ParamField body="notification_format" type="string">
+      Format: `text`, `html`, `htmlcolor`, `markdown`, or `System default`
+    </ParamField>
+    
+    <ParamField body="notification_muted" type="boolean">
+      Mute all notifications for watches in this tag
+    </ParamField>
+  </Accordion>
+
+  <Accordion title="Check Interval Settings">
+    <ParamField body="time_between_check" type="object">
+      Object with fields: `weeks`, `days`, `hours`, `minutes`, `seconds`
+    </ParamField>
+    
+    <ParamField body="time_between_check_use_default" type="boolean">
+      Whether to use global check interval (when false, uses tag-specific interval)
+    </ParamField>
+  </Accordion>
+
+  <Accordion title="Fetch Settings">
+    <ParamField body="fetch_backend" type="string">
+      Backend: `system`, `html_requests`, `html_webdriver`, `extra_browser_*`
+    </ParamField>
+    
+    <ParamField body="method" type="string">
+      HTTP method: `GET`, `POST`, `PUT`, `DELETE`
+    </ParamField>
+    
+    <ParamField body="headers" type="object">
+      Custom HTTP headers as key-value pairs
+    </ParamField>
+    
+    <ParamField body="proxy" type="string">
+      Proxy configuration key
+    </ParamField>
+  </Accordion>
+
+  <Accordion title="Content Filtering">
+    <ParamField body="include_filters" type="array">
+      CSS/XPath selectors to extract specific content
+    </ParamField>
+    
+    <ParamField body="subtractive_selectors" type="array">
+      CSS/XPath selectors to remove content
+    </ParamField>
+    
+    <ParamField body="ignore_text" type="array">
+      Text patterns to ignore in change detection
+    </ParamField>
+    
+    <ParamField body="trigger_text" type="array">
+      Text patterns that must be present to trigger
+    </ParamField>
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Bulk Operations
+
+### Recheck All Watches in Tag
+
+You can trigger a recheck of all watches in a tag:
+
+<CodeGroup>
+```bash cURL
+curl -X GET "http://localhost:5000/api/v1/tag/550e8400-e29b-41d4-a716-446655440000?recheck=true" \
+  -H "x-api-key: YOUR_API_KEY"
+```
+
+```python Python
+import requests
+
+headers = {'x-api-key': 'YOUR_API_KEY'}
+tag_uuid = '550e8400-e29b-41d4-a716-446655440000'
+
+response = requests.get(
+    f'http://localhost:5000/api/v1/tag/{tag_uuid}',
+    headers=headers,
+    params={'recheck': 'true'}
+)
+
+if response.status_code == 200:
+    # Small tag, queued synchronously
+    print(response.json())
+elif response.status_code == 202:
+    # Large tag (20+ watches), queued in background
+    print(response.json())
+```
+</CodeGroup>
+
+**Response Codes:**
+- **200 OK** - Less than 20 watches, queued synchronously
+- **202 Accepted** - 20+ watches, queued in background
+
+### Apply Settings to Multiple Watches
+
+To apply tag settings to all watches in the tag, enable `overrides_watch`:
+
+```python
+import requests
+
+headers = {
+    'x-api-key': 'YOUR_API_KEY',
+    'Content-Type': 'application/json'
+}
+tag_uuid = '550e8400-e29b-41d4-a716-446655440000'
+
+# Update tag with overrides enabled
+data = {
+    'overrides_watch': True,
+    'notification_urls': ['mailto:team@example.com'],
+    'time_between_check': {
+        'hours': 2
+    }
+}
+
+response = requests.put(
+    f'http://localhost:5000/api/v1/tag/{tag_uuid}',
+    headers=headers,
+    json=data
+)
+```
+
+When `overrides_watch` is `true`, the tag's settings take precedence over individual watch settings.

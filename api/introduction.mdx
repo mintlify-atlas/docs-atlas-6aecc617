@@ -1,0 +1,160 @@
+---
+title: Introduction
+description: Get started with the changedetection.io REST API
+---
+
+# ChangeDetection.io REST API
+
+The changedetection.io REST API allows you to programmatically manage web page monitors (watches), tags/groups, and notification settings. All API endpoints require authentication using an API key.
+
+## Base URL
+
+The API is available at `/api/v1/` from your changedetection.io instance:
+
+- **Local development**: `http://localhost:5000/api/v1`
+- **Production/hosted**: `https://yourdomain.com/api/v1`
+- **Subscription version**: `https://<your-login-url>/api/v1`
+
+## API Versioning
+
+The current API version is **v1**. All endpoints are prefixed with `/api/v1/`.
+
+<Info>
+The API follows semantic versioning. Breaking changes will result in a new API version (v2, v3, etc.).
+</Info>
+
+## Rate Limits
+
+There are currently no enforced rate limits on API requests. However, please be considerate when making bulk requests:
+
+- For bulk imports (20+ URLs), the API automatically switches to background processing
+- For bulk rechecks (20+ watches), operations are queued in the background
+- The API will return a 202 status code when background processing is initiated
+
+## Response Formats
+
+The API returns responses in the following formats:
+
+- **JSON** - Most endpoints return JSON (`application/json`)
+- **Plain text** - Some endpoints return plain text (`text/plain`)
+- **HTML** - Diff endpoints can return HTML (`text/html`)
+- **Binary** - Favicon endpoint returns image data
+
+## Error Handling
+
+The API uses standard HTTP status codes:
+
+| Status Code | Meaning |
+|-------------|----------|
+| 200 | Success |
+| 201 | Created |
+| 202 | Accepted (background processing) |
+| 204 | No Content (successful deletion) |
+| 400 | Bad Request (validation error) |
+| 403 | Forbidden (invalid API key) |
+| 404 | Not Found |
+| 429 | Too Many Requests (watch limit reached) |
+| 500 | Internal Server Error |
+
+Error responses typically include a descriptive message:
+
+```json
+{
+  "message": "No watch exists with the UUID of {uuid}"
+}
+```
+
+Or as plain text:
+
+```
+Validation failed: url: Invalid URL format
+```
+
+## Quick Start Example
+
+Here's a complete example showing how to authenticate and create a watch:
+
+<CodeGroup>
+```bash cURL
+# Set your API key
+API_KEY="your_api_key_here"
+
+# Create a new watch
+curl -X POST "http://localhost:5000/api/v1/watch" \
+  -H "x-api-key: $API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://example.com",
+    "title": "Example Site Monitor",
+    "time_between_check": {
+      "hours": 1
+    }
+  }'
+
+# Response: {"uuid": "095be615-a8ad-4c33-8e9c-c7612fbf6c9f"}
+```
+
+```python Python
+import requests
+
+API_KEY = "your_api_key_here"
+BASE_URL = "http://localhost:5000/api/v1"
+
+headers = {
+    "x-api-key": API_KEY,
+    "Content-Type": "application/json"
+}
+
+# Create a new watch
+data = {
+    "url": "https://example.com",
+    "title": "Example Site Monitor",
+    "time_between_check": {
+        "hours": 1
+    }
+}
+
+response = requests.post(
+    f"{BASE_URL}/watch",
+    headers=headers,
+    json=data
+)
+
+if response.status_code == 201:
+    watch_uuid = response.json()["uuid"]
+    print(f"Watch created: {watch_uuid}")
+else:
+    print(f"Error: {response.text}")
+```
+</CodeGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Authentication" icon="key" href="/api/authentication">
+    Learn how to get and use your API key
+  </Card>
+  <Card title="Watches" icon="eye" href="/api/watches">
+    Create and manage web page monitors
+  </Card>
+  <Card title="Tags" icon="tags" href="/api/tags">
+    Organize watches with tags and groups
+  </Card>
+  <Card title="Notifications" icon="bell" href="/api/notifications">
+    Configure notification endpoints
+  </Card>
+</CardGroup>
+
+## OpenAPI Specification
+
+The complete OpenAPI 3.1 specification is available at:
+
+```
+GET /api/v1/full-spec
+```
+
+This endpoint returns the live, fully-merged specification including all processor plugin schemas. You can use this with Swagger UI or Redoc for interactive API exploration.
+
+<Note>
+No authentication is required to fetch the OpenAPI spec.
+</Note>

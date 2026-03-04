@@ -1,80 +1,480 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quick Start Guide
+description: Get your first website monitor running in under 5 minutes
 ---
 
-## Get started in three steps
+## Overview
 
-Get your documentation site running locally and make your first customization.
+This guide will take you from zero to your first working monitor with notifications in just a few minutes. By the end, you'll have changedetection.io monitoring a website and sending you alerts when changes occur.
 
-### Step 1: Set up your local environment
+<Tip>
+  **Choose your path:**
+  - **Managed service**: Sign up at [changedetection.io](https://changedetection.io) for instant access ($8.99/month)
+  - **Self-hosted**: Follow the installation steps below for the free, open-source version
+</Tip>
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+## Installation
 
-### Step 2: Deploy your changes
+Choose the installation method that works best for you:
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+<Tabs>
+  <Tab title="Docker (Recommended)">
+    The fastest way to get started with changedetection.io:
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+    ```bash
+    docker run -d --restart always \
+      -p "127.0.0.1:5000:5000" \
+      -v datastore-volume:/datastore \
+      --name changedetection.io \
+      dgtlmoon/changedetection.io
+    ```
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+    <Note>
+      **Mac users**: Use port `5050` instead to avoid conflicts with AirPlay:
+      ```bash
+      docker run -d --restart always -p "127.0.0.1:5050:5000" ...
+      ```
+    </Note>
+  </Tab>
 
-### Step 3: Go live
+  <Tab title="Docker Compose">
+    For more control and easier configuration:
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+    ```bash
+    # Clone the repository
+    git clone https://github.com/dgtlmoon/changedetection.io.git
+    cd changedetection.io
 
-## Next steps
+    # Start the service
+    docker compose up -d
+    ```
 
-Now that you have your docs running, explore these key features:
+    The `docker-compose.yml` file includes:
+    - Main changedetection service
+    - Optional browser automation (Playwright/Selenium)
+    - Volume configuration
+    - Environment variables
+  </Tab>
 
-<CardGroup cols={2}>
+  <Tab title="Python pip">
+    Install directly via pip:
 
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
+    ```bash
+    # Install
+    pip3 install changedetection.io
 
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
+    # Run (specify data directory and port)
+    changedetection.io -d /path/to/datastore -p 5000
+    ```
 
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
+    The data directory will store all your watches, history, and settings.
+  </Tab>
+</Tabs>
 
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
+### Verify Installation
 
-</CardGroup>
+Once running, access the web interface:
+
+<Steps>
+  <Step title="Open your browser">
+    Navigate to `http://127.0.0.1:5000` (or `http://127.0.0.1:5050` on Mac)
+  </Step>
+  
+  <Step title="First-time setup">
+    You should see the changedetection.io dashboard. No registration required for self-hosted installations!
+  </Step>
+</Steps>
 
 <Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
+  The default installation uses the `:latest` tag for stable releases. Use `:dev` for bleeding-edge features from the master branch.
 </Note>
+
+## Create Your First Watch
+
+Now let's set up your first website monitor:
+
+<Steps>
+  <Step title="Add a new watch">
+    Click the **"+ Watch"** button or **"Add"** in the top navigation.
+    
+    Enter a URL to monitor, for example:
+    ```
+    https://example.com/products/special-item
+    ```
+  </Step>
+
+  <Step title="Configure basic settings">
+    On the watch edit page, you can configure:
+
+    **Essential Settings:**
+    - **URL**: The webpage to monitor
+    - **Title**: A friendly name for this watch (optional, auto-detected from page title)
+    - **Check Interval**: How often to check for changes
+    
+    **Quick Setup:**
+    For your first watch, leave most settings at default and click **"Save"**.
+  </Step>
+
+  <Step title="Run first check">
+    Back on the watch list:
+    1. Find your newly created watch
+    2. Click the **"Check Now"** button (play icon)
+    3. Wait a few seconds for the first check to complete
+    
+    <Tip>
+      The first check establishes a baseline — future checks will compare against this snapshot.
+    </Tip>
+  </Step>
+
+  <Step title="View the results">
+    Click on your watch to view:
+    - Current snapshot of the page
+    - Extracted content
+    - Check history
+    - Detected changes (none yet on first run)
+  </Step>
+</Steps>
+
+## Add Content Filtering
+
+Monitor only specific parts of a page to avoid false positives:
+
+<Tabs>
+  <Tab title="CSS Selectors (Simple)">
+    Edit your watch and add CSS selectors to the **"CSS/JSONPath/JQ Filter"** field:
+
+    ```css
+    /* Monitor only price elements */
+    .price, .product-price
+
+    /* Monitor main content */
+    main article
+
+    /* Monitor specific ID */
+    #product-details
+    ```
+
+    <Tip>
+      Use browser DevTools (F12) to inspect elements and copy selectors.
+    </Tip>
+  </Tab>
+
+  <Tab title="Visual Selector (Advanced)">
+    If you have Playwright enabled:
+
+    <Steps>
+      <Step title="Enable JavaScript fetcher">
+        In watch settings, set **"Fetch Method"** to use Playwright/browser steps.
+      </Step>
+      
+      <Step title="Open Visual Selector">
+        Click the **"Visual Selector"** tab in the watch editor.
+      </Step>
+      
+      <Step title="Select elements">
+        Click on page elements to highlight and select what you want to monitor. The tool will generate the appropriate selectors automatically.
+      </Step>
+    </Steps>
+
+    <Warning>
+      Visual Selector requires a Playwright connection. Configure `PLAYWRIGHT_DRIVER_URL` in your environment or use the managed service.
+    </Warning>
+  </Tab>
+
+  <Tab title="XPath (Powerful)">
+    For complex targeting, use XPath expressions:
+
+    ```xpath
+    <!-- Monitor specific table cells -->
+    //table[@class='pricing']//td[@class='price']
+
+    <!-- Monitor paragraphs containing specific text -->
+    //p[contains(text(), 'In Stock')]
+
+    <!-- Monitor elements with regex (LXML) -->
+    //div[re:test(@class, 'product-.*')]
+    ```
+  </Tab>
+</Tabs>
+
+## Set Up Notifications
+
+Get alerted when changes are detected:
+
+<Steps>
+  <Step title="Configure notification endpoint">
+    Edit your watch and scroll to the **"Notifications"** section.
+    
+    Add one or more notification URLs using the [Apprise](https://github.com/caronc/apprise) format:
+
+    ```bash
+    # Discord
+    discord://webhook_id/webhook_token
+
+    # Slack
+    slack://TokenA/TokenB/TokenC/
+
+    # Email (SMTP)
+    mailto://user:pass@smtp.gmail.com?to=your-email@example.com
+
+    # Telegram
+    tgram://bot_token/chat_id/
+
+    # Microsoft Teams
+    msteams://TokenA/TokenB/TokenC/
+
+    # Custom webhook
+    json://your-server.com/webhook
+    ```
+
+    <Tip>
+      You can add multiple notification URLs (one per line) to send alerts to multiple services.
+    </Tip>
+  </Step>
+
+  <Step title="Customize notification content (optional)">
+    Use Jinja2 templates to customize your alerts:
+
+    **Title:**
+    ```jinja2
+    Price changed for {{watch.title|default(watch.url)}}
+    ```
+
+    **Body:**
+    ```jinja2
+    {{watch_url}} had a change detected!
+    
+    Last checked: {{current_timestamp}}
+    
+    Changes:
+    {{diff}}
+    ```
+
+    Available variables:
+    - `{{watch_url}}`: The monitored URL
+    - `{{watch.title}}`: Watch title
+    - `{{diff}}`: HTML/text diff of changes
+    - `{{current_timestamp}}`: Check timestamp
+    - `{{preview_url}}`: Link to view the change
+  </Step>
+
+  <Step title="Test notifications">
+    Click **"Send test notification"** to verify your configuration before saving.
+  </Step>
+</Steps>
+
+## Trigger Detection
+
+Control when notifications are sent:
+
+<Tabs>
+  <Tab title="Trigger on Text">
+    Only get notified when specific text appears:
+
+    ```
+    In Stock
+    Available Now
+    Price: $99
+    ```
+
+    Add these to the **"Trigger/wait for text"** field. Supports regex:
+    ```regex
+    Price: \$[0-9]+\.[0-9]{2}
+    (Available|In Stock)
+    ```
+  </Tab>
+
+  <Tab title="Block on Text">
+    Prevent notifications if specific text is present:
+
+    ```
+    Out of Stock
+    Sold Out
+    Temporarily Unavailable
+    ```
+
+    Add to **"Block change detection if text matches"**.
+  </Tab>
+
+  <Tab title="Ignore Text">
+    Exclude dynamic content from change detection:
+
+    ```
+    Last updated:
+    Copyright ©
+    View count:
+    ```
+
+    Lines matching these patterns will be ignored during comparison.
+  </Tab>
+</Tabs>
+
+## Advanced: Monitor Prices
+
+For product monitoring, use the specialized restock processor:
+
+<Steps>
+  <Step title="Enable restock mode">
+    In watch settings, enable:
+    
+    **"Re-stock & Price detection for single product pages"**
+  </Step>
+
+  <Step title="Set price thresholds">
+    Configure optional price alerts:
+    - **Above price**: Alert if price exceeds this amount
+    - **Below price**: Alert if price drops below this amount  
+    - **Percentage change**: Alert on % price change
+  </Step>
+
+  <Step title="Monitor stock status">
+    The processor automatically extracts:
+    - Product price from meta tags
+    - Stock availability status
+    - Product name and details
+    
+    View this data directly in the watch preview.
+  </Step>
+</Steps>
+
+<Note>
+  The restock processor extracts pricing data from standard e-commerce meta tags (schema.org, Open Graph) found on most product pages.
+</Note>
+
+## Schedule Monitoring
+
+Control when checks run:
+
+<Tabs>
+  <Tab title="Check Interval">
+    Set how often the page is checked:
+    
+    - Every 5 minutes (frequent)
+    - Every hour (moderate)
+    - Once per day (light monitoring)
+    - Custom: Specify weeks, days, hours, minutes, seconds
+    
+    <Warning>
+      Respect the target website's resources. Avoid excessive checking that could be seen as abusive.
+    </Warning>
+  </Tab>
+
+  <Tab title="Time Scheduling">
+    Limit checks to specific times:
+    
+    **Example: Business hours only**
+    - Monday-Friday: 9:00 AM - 5:00 PM
+    - Timezone: Your local timezone
+    
+    **Example: Foreign news at 9 AM**
+    - Daily: 9:00 AM
+    - Timezone: Target country timezone
+    
+    Use the **"Schedule"** section in watch settings with quick presets for business hours or weekends.
+  </Tab>
+</Tabs>
+
+## Common Patterns
+
+<AccordionGroup>
+  <Accordion title="Monitor job postings">
+    ```yaml
+    URL: https://company.com/careers
+    CSS Filter: .job-listing, .career-opportunity
+    Trigger Text: (Software|Engineer|Developer)
+    Check Interval: Every 6 hours
+    ```
+  </Accordion>
+
+  <Accordion title="Track price drops">
+    ```yaml
+    URL: https://store.com/product/item-id
+    Processor: Restock & Price detection
+    Below Price: 99.99
+    Notification: discord://...
+    Check Interval: Every 1 hour
+    ```
+  </Accordion>
+
+  <Accordion title="Monitor API responses">
+    ```yaml
+    URL: https://api.example.com/status
+    Filter: jq:.status.health
+    Trigger Text: "degraded|down"
+    Notification: slack://...
+    Check Interval: Every 5 minutes
+    ```
+  </Accordion>
+
+  <Accordion title="Government announcements">
+    ```yaml
+    URL: https://government.gov/announcements
+    CSS Filter: #press-releases article
+    Ignore Text: Last updated:, Copyright
+    Check Interval: Every 3 hours
+    Schedule: Business hours only
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Visual Selector" icon="mouse-pointer" href="/features/visual-selector">
+    Learn to precisely target page elements
+  </Card>
+  <Card title="Browser Steps" icon="laptop-code" href="/features/browser-steps">
+    Automate login, clicks, and form fills
+  </Card>
+  <Card title="JSON Filtering" icon="code" href="/extraction/json-filtering">
+    Monitor and filter JSON API responses
+  </Card>
+  <Card title="Proxy Setup" icon="shield" href="/configuration/proxy-setup">
+    Route requests through proxies
+  </Card>
+</CardGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Changes detected on every check">
+    **Problem**: Dynamic content (timestamps, ads, counters) triggers false positives.
+    
+    **Solutions**:
+    - Use CSS/XPath selectors to monitor only relevant content
+    - Add dynamic text to the "Ignore text" field
+    - Use the Visual Selector to exclude changing elements
+  </Accordion>
+
+  <Accordion title="Notifications not sending">
+    **Checklist**:
+    - Test notification URL using "Send test notification" button
+    - Check notification URL format matches Apprise syntax
+    - Verify network connectivity to notification service
+    - Check changedetection.io logs for error messages
+  </Accordion>
+
+  <Accordion title="JavaScript-heavy sites not loading">
+    **Problem**: Content loaded by JavaScript doesn't appear.
+    
+    **Solution**: Enable Playwright fetcher:
+    1. Uncomment browser service in `docker-compose.yml`
+    2. Set `PLAYWRIGHT_DRIVER_URL` environment variable
+    3. Change watch fetch method to "Playwright Chrome/Javascript"
+  </Accordion>
+
+  <Accordion title="Port 5000 already in use (Mac)">
+    **Problem**: macOS AirPlay uses port 5000.
+    
+    **Solution**: Use port 5050:
+    ```bash
+    docker run ... -p "127.0.0.1:5050:5000" ...
+    ```
+  </Accordion>
+</AccordionGroup>
+
+---
+
+<Tip>
+  **Want more examples?** Visit [changedetection.io/tutorials](https://changedetection.io/tutorials) for detailed how-to guides and real-world scenarios.
+</Tip>
