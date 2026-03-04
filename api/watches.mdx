@@ -618,3 +618,126 @@ with open('favicon.ico', 'wb') as f:
     f.write(response.content)
 ```
 </CodeGroup>
+
+## Search Watches
+
+<ParamField path="GET" type="endpoint">
+  /api/v1/search
+</ParamField>
+
+Search for watches by URL or title text. Useful for finding specific monitors in large deployments.
+
+### Query Parameters
+
+<ParamField query="q" type="string" required>
+  Search query to match against watch URLs and titles
+</ParamField>
+
+<ParamField query="tag" type="string">
+  Tag name to limit search results (name not UUID)
+</ParamField>
+
+<ParamField query="partial" type="boolean" default="false">
+  Allow partial matching of URL query (set to `1` or `true`)
+</ParamField>
+
+### Response
+
+Returns matching watches with basic information:
+
+<ResponseField name="uuid" type="string">
+  Unique identifier for the watch
+</ResponseField>
+
+<ResponseField name="url" type="string">
+  URL being monitored
+</ResponseField>
+
+<ResponseField name="title" type="string">
+  Custom title for the watch
+</ResponseField>
+
+<ResponseField name="last_checked" type="integer">
+  Unix timestamp of last check
+</ResponseField>
+
+<ResponseField name="last_changed" type="integer">
+  Unix timestamp of last detected change
+</ResponseField>
+
+<ResponseField name="last_error" type="string">
+  Most recent error message (if any)
+</ResponseField>
+
+<ResponseField name="viewed" type="boolean">
+  Whether changes have been viewed
+</ResponseField>
+
+### Examples
+
+<CodeGroup>
+```bash cURL
+curl -X GET "http://localhost:5000/api/v1/search?q=example.com" \
+  -H "x-api-key: YOUR_API_KEY"
+```
+
+```python Python
+import requests
+
+headers = {'x-api-key': 'YOUR_API_KEY'}
+params = {'q': 'example.com'}
+
+response = requests.get(
+    'http://localhost:5000/api/v1/search',
+    headers=headers,
+    params=params
+)
+
+print(response.json())
+```
+
+```javascript JavaScript
+const response = await fetch(
+  'http://localhost:5000/api/v1/search?q=example.com',
+  {
+    headers: {
+      'x-api-key': 'YOUR_API_KEY'
+    }
+  }
+);
+
+const results = await response.json();
+console.log(results);
+```
+</CodeGroup>
+
+### Use Cases
+
+<AccordionGroup>
+  <Accordion title="Find watches by domain">
+    Search for all watches monitoring a specific domain:
+
+    ```bash
+    curl -X GET "http://localhost:5000/api/v1/search?q=github.com" \
+      -H "x-api-key: YOUR_API_KEY"
+    ```
+  </Accordion>
+
+  <Accordion title="Filter by tag">
+    Search within a specific tag group:
+
+    ```bash
+    curl -X GET "http://localhost:5000/api/v1/search?q=api&tag=production" \
+      -H "x-api-key: YOUR_API_KEY"
+    ```
+  </Accordion>
+
+  <Accordion title="Partial URL matching">
+    Enable partial matching for more flexible searches:
+
+    ```bash
+    curl -X GET "http://localhost:5000/api/v1/search?q=example&partial=1" \
+      -H "x-api-key: YOUR_API_KEY"
+    ```
+  </Accordion>
+</AccordionGroup>
