@@ -1,0 +1,133 @@
+{
+  "projectType": "saas",
+  "projectName": "Changedetection.io",
+  "projectDescription": "Self-hosted and cloud-based website change detection and monitoring service with instant alerts via multiple notification channels.",
+  "theme": "almond",
+  "primaryColor": "#040404",
+  "lightColor": "#92a4d0",
+  "darkColor": "#393e72",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Installation",
+            "pages": [
+              "installation/docker",
+              "installation/docker-compose",
+              "installation/pip",
+              "installation/windows"
+            ]
+          },
+          {
+            "group": "Core Features",
+            "pages": [
+              "features/visual-selector",
+              "features/browser-steps",
+              "features/restock-price-monitoring",
+              "features/notifications",
+              "features/scheduling",
+              "features/conditional-monitoring"
+            ]
+          },
+          {
+            "group": "Content Extraction",
+            "pages": [
+              "extraction/css-selectors",
+              "extraction/xpath",
+              "extraction/json-filtering",
+              "extraction/pdf-monitoring"
+            ]
+          },
+          {
+            "group": "Browser Integration",
+            "pages": [
+              "browser/playwright",
+              "browser/selenium-webdriver",
+              "browser/chrome-extension"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "configuration/proxy-setup",
+              "configuration/notifications-setup",
+              "configuration/environment-variables",
+              "configuration/importing-watches"
+            ]
+          },
+          {
+            "group": "Advanced",
+            "pages": [
+              "advanced/processors",
+              "advanced/plugins",
+              "advanced/custom-fetchers"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "api/introduction",
+              "api/authentication"
+            ]
+          },
+          {
+            "group": "Endpoints",
+            "pages": [
+              "api/watches",
+              "api/tags",
+              "api/notifications",
+              "api/import",
+              "api/system-info"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Website change detection with visual selector",
+    "Interactive browser automation steps",
+    "Price tracking and restock alerts",
+    "Multi-platform notifications (Discord, Slack, Email, etc.)",
+    "Advanced content filtering (XPath, CSS, JSONPath, jq)",
+    "Scheduled monitoring with timezone support",
+    "Conditional triggers and alerts",
+    "PDF file change tracking",
+    "JSON API monitoring",
+    "Self-hosted and cloud deployment options",
+    "Chrome browser extension",
+    "REST API for programmatic access"
+  ],
+  "publicApiSurface": [
+    "POST /api/v1/watch - Create new watch",
+    "GET /api/v1/watch - List all watches",
+    "GET /api/v1/watch/{uuid} - Get watch details",
+    "PUT /api/v1/watch/{uuid} - Update watch",
+    "DELETE /api/v1/watch/{uuid} - Delete watch",
+    "GET /api/v1/watch/{uuid}/history - Get watch history",
+    "GET /api/v1/tags - List all tags",
+    "POST /api/v1/tags - Create new tag",
+    "GET /api/v1/tags/{uuid} - Get tag details",
+    "PUT /api/v1/tags/{uuid} - Update tag",
+    "DELETE /api/v1/tags/{uuid} - Delete tag",
+    "POST /api/v1/import - Import watches",
+    "GET /api/v1/notifications - Get notification settings",
+    "PUT /api/v1/notifications - Update notification settings",
+    "GET /api/v1/systeminfo - Get system information",
+    "changedetection.io CLI - Command-line interface with options for port, host, datastore path, etc."
+  ]
+}
